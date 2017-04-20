@@ -3,11 +3,14 @@
 #define BOOST_TEST_MAIN
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE list test
+#include <boost/pool/pool_alloc.hpp>
 #include <boost/test/unit_test.hpp>
 #include <iostream>
 #include <random>
-#include "Decorators.hpp"
+#include "Allocator.hpp"
+
 using wijagels::list;
+using wijagels::BasicAllocator;
 
 static std::array<int, 9> push{{1, 2, 3, 4, 5, 6, 7, 8, 9}};
 
@@ -298,7 +301,7 @@ BOOST_AUTO_TEST_CASE(construct_test) {
 
 BOOST_AUTO_TEST_CASE(large_sort) {
   list<int64_t> lst{};
-  for (size_t i = 0; i < 1e7; i++) {
+  for (size_t i = 0; i < 1e5; i++) {
     int64_t n = rand();
     if (n % 2)
       lst.push_back(n);
@@ -308,4 +311,63 @@ BOOST_AUTO_TEST_CASE(large_sort) {
   // BOOST_REQUIRE(lst.verify_integrity());
   lst.sort();
   // BOOST_REQUIRE(lst.verify_integrity());
+}
+
+template <typename T>
+struct pointer_traits {
+  using reference = T&;
+  using const_reference = const T&;
+};
+
+template <>
+struct pointer_traits<void> {};
+
+template <typename T = void>
+struct MyAllocator : public pointer_traits<T> {
+ public:
+  using value_type = T;
+  using size_type = std::size_t;
+  using pointer = T*;
+  using const_pointer = const T*;
+  using difference_type =
+      typename std::pointer_traits<pointer>::difference_type;
+
+  MyAllocator() noexcept : counter{} {}
+
+  ~MyAllocator() noexcept {}
+
+  template <typename U>
+  MyAllocator(const MyAllocator<U>&) noexcept {}
+
+  T* allocate(size_t, const void* = 0) {
+    auto ptr = new T;
+    ++counter;
+    return ptr;
+  }
+
+  void deallocate(T* ptr, size_t) { delete ptr; }
+
+  template <typename U>
+  struct rebind {
+    typedef MyAllocator<U> other;
+  };
+
+  size_t counter;
+};
+template <typename T, typename U>
+constexpr bool operator==(const MyAllocator<T>&,
+                          const MyAllocator<U>&) noexcept;
+
+template <typename T, typename U>
+constexpr bool operator!=(const MyAllocator<T>&,
+                          const MyAllocator<U>&) noexcept;
+
+BOOST_AUTO_TEST_CASE(allocator_test) {
+  MyAllocator<int> pool{};
+  list<int, decltype(pool)> lst{pool};
+  for (auto e : push) {
+    lst.emplace_back(e);
+  }
+  BOOST_REQUIRE(std::equal(lst.begin(), lst.end(), push.begin(), push.end()));
+  BOOST_REQUIRE(lst.node_alloc_.counter == 9);
 }

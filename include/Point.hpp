@@ -1,11 +1,14 @@
-#ifndef POINT_HPP
-#define POINT_HPP
+// Copyright 2017 William Jagels
+#ifndef INCLUDE_POINT_HPP_
+#define INCLUDE_POINT_HPP_
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <initializer_list>
 #include <iostream>
 #include <stdexcept>
+#include <utility>
 
 template <size_t D, typename T>
 class Point;
@@ -130,6 +133,14 @@ std::ostream& operator<<(std::ostream& os, const Point<D>& point) {
   return os << point[D - 1] << "}";
 }
 
+/*
+ * Make point swappable for containers
+ */
+template <size_t D>
+void swap(Point<D>& lhs, Point<D>& rhs) {
+  swap(lhs.coordinates_, rhs.coordinates_);
+}
+
 namespace std {
 /*
  * Make our Point class hashable
@@ -140,14 +151,6 @@ struct hash<Point<D>> {
     return hash<array<double, D>>()(x.coordinates_);
   }
 };
-
-/*
- * Also make it swappable for containers
- */
-template <size_t D>
-void swap(Point<D>& lhs, Point<D>& rhs) {
-  swap(lhs.coordinates_, rhs.coordinates_);
-}
 }  // namespace std
 
-#endif  // POINT_HPP
+#endif  // INCLUDE_POINT_HPP_

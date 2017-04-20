@@ -9,6 +9,7 @@
 #include <utility>
 
 namespace wijagels {
+namespace detail {
 struct Node_Base_ {
   Node_Base_() : Node_Base_{this, this} {}
   Node_Base_(Node_Base_ *prev, Node_Base_ *next) : prev_{prev}, next_{next} {}
@@ -50,17 +51,18 @@ struct Node_ : Node_Base_ {
   T *operator->() { return &data_; }
 
   friend void swap(Node_ &lhs, Node_ &rhs) noexcept {
-    std::swap(lhs.next_, lhs.next_);
-    std::swap(lhs.prev_, rhs.next_);
+    std::swap(lhs.next_, rhs.next_);
+    std::swap(lhs.prev_, rhs.prev_);
   }
 
   T data_;
 };
+}  // namespace detail
 
 template <typename T, class Allocator = std::allocator<T>>
 class list {
-  using Node_Base = Node_Base_;
-  using Node = Node_<T>;
+  using Node_Base = detail::Node_Base_;
+  using Node = detail::Node_<T>;
 
  public:
   class iterator;
@@ -409,8 +411,8 @@ class list {
   void push_back(const_reference data) { insert(end(), data); }
 
   template <class... Args>
-  void emplace_back(Args &&... args) {
-    emplace(end(), std::forward<Args>(args)...);
+  reference emplace_back(Args &&... args) {
+    return *emplace(end(), std::forward<Args>(args)...);
   }
 
   void pop_back() { erase(--end()); }
@@ -418,8 +420,8 @@ class list {
   void push_front(const_reference data) { insert(begin(), data); }
 
   template <class... Args>
-  void emplace_front(Args &&... args) {
-    emplace(begin(), std::forward<Args>(args)...);
+  reference emplace_front(Args &&... args) {
+    return *emplace(begin(), std::forward<Args>(args)...);
   }
 
   void pop_front() { erase(begin()); }
@@ -636,11 +638,24 @@ class list {
   }
 #endif
 
+#ifdef LIST_DBG_ON
+ public:
+#else
  private:
+#endif
   Node_Base head_;
   allocator_type alloc_;
   node_allocator_type node_alloc_;
 };
+
+/*
+#if __cplusplus > 201402L
+namespace pmr {
+template <class T>
+using list = list<T, std::pmr::polymorphic_allocator<T>>;
+}
+#endif  // __cplusplus > 201402L
+*/
 }  // namespace wijagels
 
 #endif  // INCLUDE_LIST_HPP_
