@@ -348,6 +348,13 @@ class list {
     return reverse_iterator{iterator{head_.next_}};
   }
 
+  const_reverse_iterator rbegin() const noexcept {
+    return const_reverse_iterator{&head_};
+  }
+  const_reverse_iterator rend() const noexcept {
+    return const_reverse_iterator{head_.next_};
+  }
+
   const_reverse_iterator crbegin() const noexcept {
     return const_reverse_iterator{&head_};
   }
