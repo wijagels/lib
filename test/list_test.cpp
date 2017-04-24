@@ -313,6 +313,26 @@ BOOST_AUTO_TEST_CASE(large_sort) {
   // BOOST_REQUIRE(lst.verify_integrity());
 }
 
+BOOST_AUTO_TEST_CASE(assign_test) {
+  auto ilist = {1, 2, 3};
+  auto ilist2 = {1, 2, 3, 4};
+  list<int> lst1{1, 2, 3};
+  list<int> lst2{3, 2, 1};
+  lst2 = std::move(lst1);  // Move-assign
+  BOOST_REQUIRE(
+      std::equal(lst2.begin(), lst2.end(), ilist.begin(), ilist.end()));
+  list<int> lst3{3};
+  lst3 = lst2;  // Copy-assign
+  BOOST_REQUIRE(
+      std::equal(lst3.begin(), lst3.end(), ilist.begin(), ilist.end()));
+  lst3.push_back(4);
+  // Check original is same
+  BOOST_REQUIRE(
+      std::equal(lst2.begin(), lst2.end(), ilist.begin(), ilist.end()));
+  BOOST_REQUIRE(
+      std::equal(lst3.begin(), lst3.end(), ilist2.begin(), ilist2.end()));
+}
+
 template <typename T>
 struct pointer_traits {
   using reference = T&;

@@ -19,8 +19,6 @@ struct Node_Base_ {
     other.prev_ = &other;
   }
 
-  Node_Base_ &operator=(const Node_Base_ &) = default;
-
   Node_Base_ *prev_, *next_;
 };
 
@@ -41,10 +39,6 @@ struct Node_ : Node_Base_ {
   template <typename... Args>
   explicit Node_(Node_ *prev, Node_ *next, Args &&... args)
       : Node_Base_{prev, next}, data_{args...} {}
-
-  Node_(Node_ &&other) : Node_Base_{other}, data_{std::move(other.data_)} {}
-
-  Node_ &operator=(const Node_ &) = default;
 
   T &operator*() { return data_; }
 
@@ -265,6 +259,7 @@ class list {
   ~list() { clear(); }
 
   list &operator=(const list &other) {
+    if (this == &other) return *this;
     clear();
     if (std::allocator_traits<
             allocator_type>::propagate_on_container_copy_assignment::value) {
@@ -276,7 +271,9 @@ class list {
     return *this;
   }
 
-  list &operator=(list &&other) {
+  list &operator=(list &&other) noexcept(
+      std::allocator_traits<Allocator>::is_always_equal::value) {
+    if (this == &other) return *this;  // Not sure if this is possible
     clear();
     if (std::allocator_traits<
             allocator_type>::propagate_on_container_move_assignment::value) {
