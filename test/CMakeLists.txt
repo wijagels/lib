@@ -9,3 +9,6 @@ target_link_libraries(decorator_test ${Boost_LIBRARIES})
 
 add_executable(point_test point_test.cpp)
 target_link_libraries(point_test ${Boost_LIBRARIES})
+
+add_executable(skiplist_test skiplist_test.cpp)
+target_link_libraries(skiplist_test ${Boost_LIBRARIES})
