@@ -1,3 +1,6 @@
+// Copyright 2017 William Jagels
+#ifndef INCLUDE_DECORATORS_HPP_
+#define INCLUDE_DECORATORS_HPP_
 #include <chrono>
 #include <functional>
 #include <iostream>
@@ -72,3 +75,5 @@ Decorator<R(Args...), TimerHook> makeDecorator(R (*f)(Args...)) {
   return Decorator<R(Args...), TimerHook>{std::function<R(Args...)>(f),
                                           TimerHook{}};
 }
+
+#endif  // INCLUDE_DECORATORS_HPP_

@@ -177,7 +177,7 @@ class list {
     }
 
     pointer operator->() const {
-      return &static_cast<const Node *>(node_)->data_;
+      return &(static_cast<const Node *>(node_)->data_);
     }
 
     friend bool operator==(const const_iterator &lhs,
@@ -632,8 +632,10 @@ class list {
 #endif
 
 #ifdef LIST_DBG_ON
+
  public:
 #else
+
  private:
 #endif
   Node_Base head_;

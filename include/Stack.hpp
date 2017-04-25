@@ -1,6 +1,6 @@
 // Copyright 2017 William Jagels
-#ifndef INCLUDE_STACK_
-#define INCLUDE_STACK_
+#ifndef INCLUDE_STACK_HPP_
+#define INCLUDE_STACK_HPP_
 #include <utility>
 #include "List.hpp"
 
@@ -54,29 +54,33 @@ class stack {
   container_type c;
 };
 template <class T, class Container>
-bool operator==(stack<T, Container>& lhs, stack<T, Container>& rhs) {
+bool operator==(const stack<T, Container>& lhs,
+                const stack<T, Container>& rhs) {
   return lhs.c == rhs.c;
 }
 template <class T, class Container>
-bool operator!=(stack<T, Container>& lhs, stack<T, Container>& rhs) {
+bool operator!=(const stack<T, Container>& lhs,
+                const stack<T, Container>& rhs) {
   return lhs.c != rhs.c;
 }
 template <class T, class Container>
-bool operator<(stack<T, Container>& lhs, stack<T, Container>& rhs) {
+bool operator<(const stack<T, Container>& lhs, const stack<T, Container>& rhs) {
   return lhs < rhs;
 }
 template <class T, class Container>
-bool operator<=(stack<T, Container>& lhs, stack<T, Container>& rhs) {
+bool operator<=(const stack<T, Container>& lhs,
+                const stack<T, Container>& rhs) {
   return lhs <= rhs;
 }
 template <class T, class Container>
-bool operator>(stack<T, Container>& lhs, stack<T, Container>& rhs) {
+bool operator>(const stack<T, Container>& lhs, const stack<T, Container>& rhs) {
   return lhs > rhs;
 }
 template <class T, class Container>
-bool operator>=(stack<T, Container>& lhs, stack<T, Container>& rhs) {
+bool operator>=(const stack<T, Container>& lhs,
+                const stack<T, Container>& rhs) {
   return lhs >= rhs;
 }
-}
+}  // namespace wijagels
 
-#endif  // INCLUDE_STACK_
+#endif  // INCLUDE_STACK_HPP_
