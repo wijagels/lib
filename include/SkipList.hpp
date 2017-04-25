@@ -264,16 +264,16 @@ class skiplist {
   template <class K>
   insert_type find_pos_(iterator hint, const K &data) {
     if (begin() == end()) return {true, end()};
-    if (hint == end() || comp(*hint, data)) {  // Go forwards
+    if (hint == end() || comp_(*hint, data)) {  // Go forwards
       hint.level_ = hint.node_->links() - 1;
       while (hint.level_ > 0) {
         auto next = hint;
         ++next;
         if (next == end()) {
           hint.down();
-        } else if (comp(*next, data)) {
+        } else if (comp_(*next, data)) {
           ++hint;
-        } else if (comp(data, *next)) {
+        } else if (comp_(data, *next)) {
           hint.down();
         } else {
           next.level_ = 0;
@@ -281,22 +281,22 @@ class skiplist {
         }
       }
       if (hint == end()) ++hint;
-      while (hint != end() && comp(*hint, data)) {
+      while (hint != end() && comp_(*hint, data)) {
         ++hint;
       }
-      /*!comp(*hint, data) &&*/
-      if (hint != end() && !comp(data, *hint)) return {false, hint};
+      /*!comp_(*hint, data) &&*/
+      if (hint != end() && !comp_(data, *hint)) return {false, hint};
       return {true, hint};
-    } else if (comp(data, *hint)) {  // Go backwards
+    } else if (comp_(data, *hint)) {  // Go backwards
       hint.level_ = hint.node_->links() - 1;
       while (hint.level_ > 0) {
         auto prev = hint;
         --prev;
         if (prev == end()) {
           hint.down();
-        } else if (comp(data, *hint)) {
+        } else if (comp_(data, *hint)) {
           --hint;
-        } else if (comp(*hint, data)) {
+        } else if (comp_(*hint, data)) {
           hint.down();
         } else {
           prev.level_ = 0;
@@ -304,11 +304,11 @@ class skiplist {
         }
       }
       if (hint == end()) --hint;
-      while (hint != end() && comp(data, *hint)) {
+      while (hint != end() && comp_(data, *hint)) {
         --hint;
       }
       ++hint;
-      if (!comp(*hint, data) && !comp(data, *hint)) return {false, hint};
+      if (!comp_(*hint, data) && !comp_(data, *hint)) return {false, hint};
       return {true, hint};
     }
     hint.level_ = 0;
@@ -358,7 +358,7 @@ class skiplist {
 
   explicit skiplist(const value_compare &cmp,
                     const Allocator &alloc = Allocator{})
-      : comp{cmp}, alloc_{alloc}, head_{1lu} {}
+      : comp_{cmp}, alloc_{alloc}, head_{1lu} {}
 
   skiplist(std::initializer_list<value_type> init,
            const value_compare &cmp = value_compare(),
@@ -446,7 +446,7 @@ class skiplist {
 
   iterator erase(const iterator &pos) {
     using std::allocator_traits;
-    iterator ret = pos.node_->nexts_[0];
+    iterator ret = iterator{pos.node_->nexts_[0]};
     auto node = pos.node_;
     unlink_node_(node);
     destroy_node_(node);
@@ -504,7 +504,7 @@ class skiplist {
   }
 
   /* Observers */
-  value_compare value_comp() const { return comp; }
+  value_compare value_comp() const { return comp_; }
 
   /* Utilities */
   /* Not for normal use */
@@ -531,7 +531,7 @@ class skiplist {
   }
 
  private:
-  value_compare comp;
+  value_compare comp_;
   allocator_type alloc_;
   node_allocator_type node_alloc_;
   skip_node_base head_;
