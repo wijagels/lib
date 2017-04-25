@@ -142,11 +142,8 @@ class list {
    public:
     using value_type = T;
     using difference_type = size_t;
-    using reference = value_type &;
-    using const_reference = const value_type &;
-    using pointer = typename std::allocator_traits<Allocator>::pointer;
-    using const_pointer =
-        typename std::allocator_traits<Allocator>::const_pointer;
+    using reference = const value_type &;
+    using pointer = typename std::allocator_traits<Allocator>::const_pointer;
     using iterator_category = std::bidirectional_iterator_tag;
 
     explicit const_iterator(const Node_Base *node) : node_{node} {}
@@ -175,11 +172,11 @@ class list {
       return ret;
     }
 
-    const_reference operator*() const {
+    reference operator*() const {
       return static_cast<const Node *>(node_)->data_;
     }
 
-    const_pointer operator->() const {
+    pointer operator->() const {
       return &static_cast<const Node *>(node_)->data_;
     }
 
@@ -338,25 +335,17 @@ class list {
   const_iterator cbegin() const noexcept { return const_iterator{head_.next_}; }
   const_iterator cend() const noexcept { return const_iterator{&head_}; }
 
-  reverse_iterator rbegin() noexcept {
-    return reverse_iterator{iterator{&head_}};
-  }
-  reverse_iterator rend() noexcept {
-    return reverse_iterator{iterator{head_.next_}};
-  }
+  reverse_iterator rbegin() noexcept { return reverse_iterator{end()}; }
+  reverse_iterator rend() noexcept { return reverse_iterator{begin()}; }
 
-  const_reverse_iterator rbegin() const noexcept {
-    return const_reverse_iterator{&head_};
-  }
-  const_reverse_iterator rend() const noexcept {
-    return const_reverse_iterator{head_.next_};
-  }
+  const_reverse_iterator rbegin() const noexcept { return crbegin(); }
+  const_reverse_iterator rend() const noexcept { return crend(); }
 
   const_reverse_iterator crbegin() const noexcept {
-    return const_reverse_iterator{&head_};
+    return const_reverse_iterator{cend()};
   }
   const_reverse_iterator crend() const noexcept {
-    return const_reverse_iterator{head_.next_};
+    return const_reverse_iterator{cbegin()};
   }
 
   /* Capacity */

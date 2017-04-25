@@ -333,6 +333,19 @@ BOOST_AUTO_TEST_CASE(assign_test) {
       std::equal(lst3.begin(), lst3.end(), ilist2.begin(), ilist2.end()));
 }
 
+BOOST_AUTO_TEST_CASE(iterator_test) {
+  std::list<int> result{1, 2, 8, 16};
+  list<int> lst{1, 2, 8, 16};
+  BOOST_REQUIRE(
+      std::equal(lst.begin(), lst.end(), result.begin(), result.end()));
+  BOOST_REQUIRE(
+      std::equal(lst.cbegin(), lst.cend(), result.cbegin(), result.cend()));
+  BOOST_REQUIRE(
+      std::equal(lst.rbegin(), lst.rend(), result.rbegin(), result.rend()));
+  BOOST_REQUIRE(
+      std::equal(lst.crbegin(), lst.crend(), result.crbegin(), result.crend()));
+}
+
 template <typename T>
 struct pointer_traits {
   using reference = T&;
