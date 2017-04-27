@@ -45,10 +45,11 @@ class skiplist {
               std::vector<skip_node_base *> nexts, const T &data)
         : skip_node_base{prevs, nexts}, data_{data} {}
 
-    explicit skip_node(const T &data) : skip_node{1lu, data} {}
-
     explicit skip_node(size_t level, const T &data)
         : skip_node_base{level}, data_{data} {}
+
+    explicit skip_node(size_t level, T &&data)
+        : skip_node_base{level}, data_{std::move(data)} {}
 
     template <typename... Args>
     explicit skip_node(size_t level, Args &&... args)
@@ -64,6 +65,7 @@ class skiplist {
   };
 
  public:
+  class const_iterator;
   class iterator {
     friend skiplist;
     skip_node_base *node_;
@@ -82,6 +84,9 @@ class skiplist {
 
     explicit iterator(skip_node_base *node, size_t level = 0)
         : node_{node}, level_{level} {}
+
+    explicit iterator(const const_iterator &other)
+        : iterator{other.un_const()} {}
 
     iterator &operator++() {
       node_ = node_->nexts_[level_];
@@ -141,6 +146,7 @@ class skiplist {
 
   class const_iterator {
     friend skiplist;
+    friend iterator;
     const skip_node_base *node_;
     size_t level_;
 
@@ -237,7 +243,7 @@ class skiplist {
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
   using node_ptr = skip_node *;
   using node_type = std::shared_ptr<skip_node>;
-  using insert_type = std::pair<bool, iterator>;
+  using insert_type = std::pair<iterator, bool>;
   using node_allocator_type = typename std::allocator_traits<
       allocator_type>::template rebind_alloc<skip_node>;
   using node_alloc_traits = typename std::allocator_traits<node_allocator_type>;
@@ -258,12 +264,12 @@ class skiplist {
   /*
    * Return an iterator directly after the location where some data should be
    * inserted.
-   * If the data is already present, return {false, iter} where iter is the
+   * If the data is already present, return {iter, false} where iter is the
    * iterator pointing to that data
    */
   template <class K>
   insert_type find_pos_(iterator hint, const K &data) {
-    if (begin() == end()) return {true, end()};
+    if (begin() == end()) return {end(), true};
     if (hint == end() || comp_(*hint, data)) {  // Go forwards
       hint.level_ = hint.node_->links() - 1;
       while (hint.level_ > 0) {
@@ -277,7 +283,7 @@ class skiplist {
           hint.down();
         } else {
           next.level_ = 0;
-          return {false, next};
+          return {next, false};
         }
       }
       if (hint == end()) ++hint;
@@ -285,8 +291,8 @@ class skiplist {
         ++hint;
       }
       /*!comp_(*hint, data) &&*/
-      if (hint != end() && !comp_(data, *hint)) return {false, hint};
-      return {true, hint};
+      if (hint != end() && !comp_(data, *hint)) return {hint, false};
+      return {hint, true};
     } else if (comp_(data, *hint)) {  // Go backwards
       hint.level_ = hint.node_->links() - 1;
       while (hint.level_ > 0) {
@@ -300,7 +306,7 @@ class skiplist {
           hint.down();
         } else {
           prev.level_ = 0;
-          return {false, prev};
+          return {prev, false};
         }
       }
       if (hint == end()) --hint;
@@ -308,11 +314,11 @@ class skiplist {
         --hint;
       }
       ++hint;
-      if (!comp_(*hint, data) && !comp_(data, *hint)) return {false, hint};
-      return {true, hint};
+      if (!comp_(*hint, data) && !comp_(data, *hint)) return {hint, false};
+      return {hint, true};
     }
     hint.level_ = 0;
-    return {false, hint};
+    return {hint, false};
   }
 
   /*
@@ -371,6 +377,35 @@ class skiplist {
 
   ~skiplist() { clear(); }
 
+  skiplist &operator=(const skiplist &other) {
+    clear();
+    for (auto e : other) {
+      insert(e);
+    }
+    return *this;
+  }
+
+  skiplist &operator=(skiplist &&other) noexcept(
+      std::allocator_traits<Allocator>::is_always_equal::value
+          &&std::is_nothrow_move_assignable<Compare>::value) {
+    clear();
+    if (typename std::allocator_traits<
+            allocator_type>::propagate_on_container_move_assignment()) {
+      alloc_ = other.alloc_;
+    }
+    if (alloc_ != other.alloc_) {
+      for (auto e : other) {
+        insert(e);
+      }
+    } else {
+      head_ = std::move(other.head_);
+      other.head_.nexts_ = {{&other.head_}};
+      other.head_.prevs_ = {{&other.head_}};
+      assert(other.empty());
+    }
+    return *this;
+  }
+
   /* Iterators */
   iterator begin() noexcept { return ++end(); }
   iterator end() noexcept { return iterator{&head_}; }
@@ -389,6 +424,13 @@ class skiplist {
     return const_reverse_iterator{cbegin()};
   }
 
+  /* Capacity */
+  bool empty() const noexcept { return begin() == end(); }
+
+  size_type size() const noexcept { return std::distance(begin(), end()); }
+
+  size_type max_size() const noexcept { return node_alloc_traits::max_size(); }
+
   /* Modifiers */
   void clear() {
     /*
@@ -402,21 +444,39 @@ class skiplist {
         last = it;
       }
       destroy_node_(last.node_);
+      head_.nexts_ = {{&head_}};
+      head_.prevs_ = {{&head_}};
     }
   }
 
   insert_type insert(const_reference data) { return insert(end(), data); }
 
-  insert_type insert(const iterator &hint, const_reference data) {
+  insert_type insert(const_iterator hint, const_reference data) {
     using std::allocator_traits;
-    auto pos = find_pos_(hint, data);
-    if (!pos.first) return pos;
+    auto pos = find_pos_(iterator{hint}, data);
+    if (!pos.second) return pos;
 
     size_t lvl = distrib(gen) + 1;
     node_ptr node = node_alloc_traits::allocate(node_alloc_, 1);
     node_alloc_traits::construct(node_alloc_, node, lvl, data);
-    insert_node_(pos.second, node);
-    return {true, iterator{node}};
+    insert_node_(pos.first, node);
+    return {iterator{node}, true};
+  }
+
+  insert_type insert(value_type &&data) {
+    return insert(cend(), std::move(data));
+  }
+
+  insert_type insert(const_iterator hint, value_type &&data) {
+    using std::allocator_traits;
+    auto pos = find_pos_(iterator{hint}, data);
+    if (!pos.second) return pos;
+
+    size_t lvl = distrib(gen) + 1;
+    node_ptr node = node_alloc_traits::allocate(node_alloc_, 1);
+    node_alloc_traits::construct(node_alloc_, node, lvl, std::move(data));
+    insert_node_(pos.first, node);
+    return {iterator{node}, true};
   }
 
   template <typename... Args>
@@ -435,13 +495,13 @@ class skiplist {
     node_alloc_traits::construct(node_alloc_, node, lvl,
                                  std::forward<Args>(args)...);
     auto pos = find_pos_(hint, node->data_);
-    if (!pos.first) {
+    if (!pos.second) {
       node_alloc_traits::destroy(node_alloc_, node);
       node_alloc_traits::deallocate(node_alloc_, node, 1);
       return pos;
     }
-    insert_node_(pos.second, node);
-    return {true, iterator{node}};
+    insert_node_(pos.first, node);
+    return {iterator{node}, true};
   }
 
   iterator erase(const iterator &pos) {
@@ -466,7 +526,7 @@ class skiplist {
 
   node_type extract(const_reference data) {
     auto res = find_pos_(end(), data);
-    if (!res.first) return extract(res.second);
+    if (!res.second) return extract(res.first);
     return node_type{};
   }
 
@@ -481,9 +541,9 @@ class skiplist {
       auto r = find_pos_(end(), *it);
       auto node = it.node_;
       ++it;
-      if (r.first) {
+      if (r.second) {
         source.unlink_node_(node);
-        insert_node_(r.second, node);
+        insert_node_(r.first, node);
       }
     }
   }
@@ -492,14 +552,14 @@ class skiplist {
   template <class K>
   iterator find(const K &data) {
     auto r = find_pos_(end(), data);
-    if (!r.first) return r.second;
+    if (!r.second) return r.first;
     return end();
   }
 
   template <class K>
   const_iterator find(const K &data) const {
     auto r = find_pos_(end(), data);
-    if (!r.first) return r.second;
+    if (!r.second) return r.first;
     return end();
   }
 

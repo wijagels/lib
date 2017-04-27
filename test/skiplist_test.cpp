@@ -66,6 +66,28 @@ BOOST_AUTO_TEST_CASE(insert_test) {
   BOOST_REQUIRE(std::equal(s.begin(), s.end(), sorted.begin(), sorted.end()));
 }
 
+struct nocopy {
+  nocopy(int n) : data{n} {}
+  nocopy(const nocopy&) = delete;
+  nocopy(nocopy&&) = default;
+  friend bool operator==(const nocopy& lhs, const nocopy& rhs) {
+    return lhs.data == rhs.data;
+  }
+  friend bool operator<(const nocopy& lhs, const nocopy& rhs) {
+    return lhs.data < rhs.data;
+  }
+  int data;
+};
+
+BOOST_AUTO_TEST_CASE(move_insert_test) {
+  skiplist<nocopy> s{};
+  s.insert(nocopy{1});
+  s.insert(nocopy{2});
+  s.insert(nocopy{3});
+  std::initializer_list<nocopy> result = {{1}, {2}, {3}};
+  BOOST_REQUIRE(std::equal(s.begin(), s.end(), result.begin(), result.end()));
+}
+
 BOOST_AUTO_TEST_CASE(med_insert_test) {
   std::set<int> rand_list_sorted = md_list;
   skiplist<int> s{};
@@ -180,4 +202,29 @@ BOOST_AUTO_TEST_CASE(iterator_test) {
       std::equal(list.rbegin(), list.rend(), result.rbegin(), result.rend()));
   BOOST_REQUIRE(std::equal(list.crbegin(), list.crend(), result.crbegin(),
                            result.crend()));
+}
+
+BOOST_AUTO_TEST_CASE(size_test) {
+  skiplist<int> list{1, 2, 3};
+  BOOST_REQUIRE_EQUAL(list.size(), 3);
+  list.insert(4);
+  BOOST_REQUIRE_EQUAL(list.size(), 4);
+  list.erase(list.find(4));
+  BOOST_REQUIRE_EQUAL(list.size(), 3);
+  list.clear();
+  BOOST_REQUIRE_EQUAL(list.size(), 0);
+}
+
+BOOST_AUTO_TEST_CASE(move_test) {
+  skiplist<int> list{rand_list};
+  skiplist<int> nls{1};
+  BOOST_TEST_MESSAGE("Running move_test, if this takes long something's wrong");
+  for (int i = 0; i < 1e7; i++) {
+    nls = std::move(list);
+    list = std::move(nls);
+  }
+  skiplist<int> result{rand_list};
+  BOOST_REQUIRE(
+      std::equal(list.begin(), list.end(), result.begin(), result.end()));
+  BOOST_TEST_MESSAGE("Passed move_test");
 }
