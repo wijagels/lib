@@ -3,8 +3,10 @@
 #define INCLUDE_SKIPLIST_HPP_
 #include <cassert>
 #include <functional>
+#include <iterator>
 #include <memory>
 #include <random>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -511,6 +513,12 @@ class skiplist {
     unlink_node_(node);
     destroy_node_(node);
     return ret;
+  }
+  void swap(skiplist &other) noexcept(
+      std::allocator_traits<Allocator>::is_always_equal::value
+          &&std::__is_nothrow_swappable<Compare>::value) {
+    std::swap(comp_, other.comp_);
+    std::swap(alloc_, other.alloc_);
   }
 
   node_type extract(const const_iterator &pos) {
