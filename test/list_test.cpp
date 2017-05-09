@@ -119,6 +119,8 @@ struct StrictStruct {
   StrictStruct(const StrictStruct&) = delete;
   StrictStruct(StrictStruct&&) = delete;
   StrictStruct(int a, double b) : a_{a}, b_{b} {}
+  StrictStruct& operator=(const StrictStruct&) = delete;
+  StrictStruct& operator=(StrictStruct&&) = delete;
   friend bool operator==(const StrictStruct& lhs, const StrictStruct& rhs) {
     return lhs.a_ == rhs.a_ && lhs.b_ == rhs.b_;
   }
@@ -365,14 +367,14 @@ struct MyAllocator : public pointer_traits<T> {
   using difference_type =
       typename std::pointer_traits<pointer>::difference_type;
 
-  MyAllocator() noexcept : counter{} {}
+  MyAllocator() = default;
 
-  ~MyAllocator() noexcept {}
+  ~MyAllocator() = default;
 
   template <typename U>
   MyAllocator(const MyAllocator<U>&) noexcept {}
 
-  T* allocate(size_t, const void* = 0) {
+  T* allocate(size_t, const void* = nullptr) {
     auto ptr = new T;
     ++counter;
     return ptr;
@@ -382,10 +384,10 @@ struct MyAllocator : public pointer_traits<T> {
 
   template <typename U>
   struct rebind {
-    typedef MyAllocator<U> other;
+    using other = MyAllocator<U>;
   };
 
-  size_t counter;
+  size_t counter{};
 };
 template <typename T, typename U>
 constexpr bool operator==(const MyAllocator<T>&,
@@ -402,5 +404,5 @@ BOOST_AUTO_TEST_CASE(allocator_test) {
     lst.emplace_back(e);
   }
   BOOST_REQUIRE(std::equal(lst.begin(), lst.end(), push.begin(), push.end()));
-  BOOST_REQUIRE(lst.node_alloc_.counter == 9);
+  BOOST_REQUIRE(lst.d_node_alloc.counter == 9);
 }

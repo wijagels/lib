@@ -10,53 +10,67 @@
 
 namespace wijagels {
 namespace detail {
-struct Node_Base_ {
-  Node_Base_() : Node_Base_{this, this} {}
-  Node_Base_(Node_Base_ *prev, Node_Base_ *next) : prev_{prev}, next_{next} {}
-  Node_Base_(Node_Base_ &&other)
-      : prev_{std::move(other.prev_)}, next_{std::move(other.next_)} {
-    other.next_ = &other;
-    other.prev_ = &other;
+struct Node_Base {
+  Node_Base() : Node_Base{this, this} {}
+  Node_Base(Node_Base *prev, Node_Base *next)
+      : d_prev_p{prev}, d_next_p{next} {}
+  Node_Base(const Node_Base &other) = default;
+  Node_Base(Node_Base &&other)
+      : d_prev_p{std::move(other.d_prev_p)},
+        d_next_p{std::move(other.d_next_p)} {
+    other.d_next_p = &other;
+    other.d_prev_p = &other;
+  }
+  ~Node_Base() = default;
+  Node_Base &operator=(const Node_Base &) = default;
+  Node_Base &operator=(Node_Base &&other) {
+    if (this != &other) {
+      d_prev_p = std::move(other.d_prev_p);
+      d_next_p = std::move(other.d_next_p);
+      other.d_next_p = &other;
+      other.d_prev_p = &other;
+    }
+    return *this;
   }
 
-  Node_Base_ *prev_, *next_;
+  Node_Base *d_prev_p, *d_next_p;
 };
 
 template <typename T>
-struct Node_ : Node_Base_ {
-  Node_(Node_ *prev, Node_ *next, const T &data)
-      : Node_Base_{prev, next}, data_{data} {}
+struct Node : Node_Base {
+  Node(Node *prev, Node *next, const T &data)
+      : Node_Base{prev, next}, d_data{data} {}
 
-  explicit Node_(const T &data) : Node_{this, this, data} {}
+  explicit Node(const T &data) : Node{this, this, data} {}
 
-  Node_(Node_ *prev, Node_ *next, T &&data)
-      : Node_Base_{prev, next}, data_{data} {}
-
-  template <typename... Args>
-  explicit Node_(Args &&... args)
-      : Node_{this, this, std::forward<Args>(args)...} {}
+  Node(Node *prev, Node *next, T &&data)
+      : Node_Base{prev, next}, d_data{data} {}
 
   template <typename... Args>
-  explicit Node_(Node_ *prev, Node_ *next, Args &&... args)
-      : Node_Base_{prev, next}, data_{args...} {}
+  explicit Node(Args &&... args)
+      : Node{this, this, std::forward<Args>(args)...} {}
 
-  T &operator*() { return data_; }
+  template <typename... Args>
+  explicit Node(Node *prev, Node *next, Args &&... args)
+      : Node_Base{prev, next}, d_data{args...} {}
 
-  T *operator->() { return &data_; }
+  T &operator*() { return d_data; }
 
-  friend void swap(Node_ &lhs, Node_ &rhs) noexcept {
-    std::swap(lhs.next_, rhs.next_);
-    std::swap(lhs.prev_, rhs.prev_);
+  T *operator->() { return &d_data; }
+
+  friend void swap(Node &lhs, Node &rhs) noexcept {
+    std::swap(lhs.d_next_p, rhs.d_next_p);
+    std::swap(lhs.d_prev_p, rhs.d_prev_p);
   }
 
-  T data_;
+  T d_data;
 };
 }  // namespace detail
 
 template <typename T, class Allocator = std::allocator<T>>
 class list {
-  using Node_Base = detail::Node_Base_;
-  using Node = detail::Node_<T>;
+  using Node_Base = detail::Node_Base;
+  using Node = detail::Node<T>;
 
  public:
   class iterator;
@@ -78,7 +92,7 @@ class list {
  public:
   class iterator {
    public:
-    Node_Base *node_;
+    Node_Base *d_node_p;
     friend list;
 
    public:
@@ -91,40 +105,44 @@ class list {
         typename std::allocator_traits<Allocator>::const_pointer;
     using iterator_category = std::bidirectional_iterator_tag;
 
-    explicit iterator(Node_Base *node) : node_{node} {}
+    explicit iterator(Node_Base *node) : d_node_p{node} {}
 
     iterator &operator++() {
-      node_ = node_->next_;
+      d_node_p = d_node_p->d_next_p;
       return *this;
     }
 
     iterator operator++(int) {
       iterator ret = iterator{*this};
-      node_ = node_->next_;
+      d_node_p = d_node_p->d_next_p;
       return ret;
     }
 
     iterator &operator--() {
-      node_ = node_->prev_;
+      d_node_p = d_node_p->d_prev_p;
       return *this;
     }
 
     iterator operator--(int) {
       iterator ret = iterator{*this};
-      node_ = node_->prev_;
+      d_node_p = d_node_p->d_prev_p;
       return ret;
     }
 
-    reference operator*() const { return static_cast<Node *>(node_)->data_; }
+    reference operator*() const {
+      return static_cast<Node *>(d_node_p)->d_data;
+    }
 
-    pointer operator->() const { return &(static_cast<Node *>(node_)->data_); }
+    pointer operator->() const {
+      return &(static_cast<Node *>(d_node_p)->d_data);
+    }
 
     friend bool operator==(const iterator &lhs, const iterator &rhs) {
-      return lhs.node_ == rhs.node_;
+      return lhs.d_node_p == rhs.d_node_p;
     }
 
     friend bool operator!=(const iterator &lhs, const iterator &rhs) {
-      return lhs.node_ != rhs.node_;
+      return lhs.d_node_p != rhs.d_node_p;
     }
 
     friend difference_type distance(const iterator &lhs, const iterator &rhs) {
@@ -136,7 +154,7 @@ class list {
   };
 
   class const_iterator {
-    const Node_Base *node_;
+    const Node_Base *d_node_p;
     friend list;
 
    public:
@@ -146,48 +164,48 @@ class list {
     using pointer = typename std::allocator_traits<Allocator>::const_pointer;
     using iterator_category = std::bidirectional_iterator_tag;
 
-    explicit const_iterator(const Node_Base *node) : node_{node} {}
+    explicit const_iterator(const Node_Base *node) : d_node_p{node} {}
 
-    const_iterator(const iterator &other) : node_{other.node_} {}
+    const_iterator(const iterator &other) : d_node_p{other.d_node_p} {}
 
     const_iterator &operator++() {
-      node_ = node_->next_;
+      d_node_p = d_node_p->d_next_p;
       return *this;
     }
 
     const_iterator operator++(int) {
       const_iterator ret = const_iterator{*this};
-      node_ = node_->next_;
+      d_node_p = d_node_p->d_next_p;
       return ret;
     }
 
     const_iterator &operator--() {
-      node_ = node_->prev_;
+      d_node_p = d_node_p->d_prev_p;
       return *this;
     }
 
     const_iterator operator--(int) {
       const_iterator ret = const_iterator{*this};
-      node_ = node_->prev_;
+      d_node_p = d_node_p->d_prev_p;
       return ret;
     }
 
     reference operator*() const {
-      return static_cast<const Node *>(node_)->data_;
+      return static_cast<const Node *>(d_node_p)->d_data;
     }
 
     pointer operator->() const {
-      return &(static_cast<const Node *>(node_)->data_);
+      return &(static_cast<const Node *>(d_node_p)->d_data);
     }
 
     friend bool operator==(const const_iterator &lhs,
                            const const_iterator &rhs) {
-      return lhs.node_ == rhs.node_;
+      return lhs.d_node_p == rhs.d_node_p;
     }
 
     friend bool operator!=(const const_iterator &lhs,
                            const const_iterator &rhs) {
-      return lhs.node_ != rhs.node_;
+      return lhs.d_node_p != rhs.d_node_p;
     }
 
     friend difference_type distance(const const_iterator &lhs,
@@ -199,16 +217,16 @@ class list {
     }
 
    private:
-    iterator un_const() { return iterator{const_cast<Node_Base *>(node_)}; }
+    iterator un_const() { return iterator{const_cast<Node_Base *>(d_node_p)}; }
   };
 
  public:
   list() : list{Allocator()} {}
 
-  explicit list(const Allocator &alloc) : head_{}, alloc_{alloc} {}
+  explicit list(const Allocator &alloc) : d_alloc{alloc} {}
 
   list(size_type count, const T &value, const Allocator &alloc = Allocator())
-      : head_{}, alloc_{alloc} {
+      : d_alloc{alloc} {
     for (; count > 0; --count) push_back(value);
   }
 
@@ -225,9 +243,9 @@ class list {
     }
   }
 
-  list(const list &other) : head_{}, alloc_{} {
-    alloc_ = std::allocator_traits<
-        allocator_type>::select_on_container_copy_construction(other.alloc_);
+  list(const list &other) : d_alloc{} {
+    d_alloc = std::allocator_traits<
+        allocator_type>::select_on_container_copy_construction(other.d_alloc);
     for (const_reference e : other) push_back(e);
   }
 
@@ -242,12 +260,13 @@ class list {
   }
 
   list(list &&other)
-      : alloc_{std::move(other.alloc_)}, node_alloc_{std::move(other.alloc_)} {
+      : d_alloc{std::move(other.d_alloc)},
+        d_node_alloc{std::move(other.d_alloc)} {
     splice(cend(), other);
   }
 
   list(std::initializer_list<T> init, const Allocator &alloc = Allocator())
-      : head_{}, alloc_{alloc} {
+      : d_alloc{alloc} {
     for (auto &e : init) {
       emplace_back(e);
     }
@@ -260,7 +279,7 @@ class list {
     clear();
     if (std::allocator_traits<
             allocator_type>::propagate_on_container_copy_assignment::value) {
-      alloc_ = other.alloc_;
+      d_alloc = other.d_alloc;
     }
     for (auto e : other) {
       push_back(e);
@@ -274,7 +293,7 @@ class list {
     clear();
     if (std::allocator_traits<
             allocator_type>::propagate_on_container_move_assignment::value) {
-      alloc_ = std::move(other.alloc_);
+      d_alloc = std::move(other.d_alloc);
       splice(cend(), other);
     } else {
       for (auto &e : other) {
@@ -314,7 +333,7 @@ class list {
     }
   }
 
-  allocator_type get_allocator() { return alloc_; }
+  allocator_type get_allocator() { return d_alloc; }
 
   /* Element access */
 
@@ -326,14 +345,18 @@ class list {
 
   /* Iterators */
 
-  iterator begin() noexcept { return iterator{head_.next_}; }
-  iterator end() noexcept { return iterator{&head_}; }
+  iterator begin() noexcept { return iterator{d_head.d_next_p}; }
+  iterator end() noexcept { return iterator{&d_head}; }
 
-  const_iterator begin() const noexcept { return const_iterator{head_.next_}; }
-  const_iterator end() const noexcept { return const_iterator{&head_}; }
+  const_iterator begin() const noexcept {
+    return const_iterator{d_head.d_next_p};
+  }
+  const_iterator end() const noexcept { return const_iterator{&d_head}; }
 
-  const_iterator cbegin() const noexcept { return const_iterator{head_.next_}; }
-  const_iterator cend() const noexcept { return const_iterator{&head_}; }
+  const_iterator cbegin() const noexcept {
+    return const_iterator{d_head.d_next_p};
+  }
+  const_iterator cend() const noexcept { return const_iterator{&d_head}; }
 
   reverse_iterator rbegin() noexcept { return reverse_iterator{end()}; }
   reverse_iterator rend() noexcept { return reverse_iterator{begin()}; }
@@ -366,8 +389,8 @@ class list {
 
  private:
   inline void link_(Node_Base *first, Node_Base *last) {
-    first->next_ = last;
-    last->prev_ = first;
+    first->d_next_p = last;
+    last->d_prev_p = first;
   }
 
   template <typename... Args>
@@ -379,26 +402,26 @@ class list {
  public:
   iterator insert(const iterator &pos, const_reference data) {
     using std::allocator_traits;
-    Node *node = node_alloc_traits::allocate(node_alloc_, 1);
-    node_alloc_traits::construct(node_alloc_, node, data);
-    link_(pos.node_->prev_, node, pos.node_);
+    Node *node = node_alloc_traits::allocate(d_node_alloc, 1);
+    node_alloc_traits::construct(d_node_alloc, node, data);
+    link_(pos.d_node_p->d_prev_p, node, pos.d_node_p);
     return iterator{node};
   }
 
   template <class... Args>
   iterator emplace(const iterator &pos, Args &&... args) {
-    Node *node = node_alloc_traits::allocate(node_alloc_, 1);
-    node_alloc_traits::construct(node_alloc_, node,
+    Node *node = node_alloc_traits::allocate(d_node_alloc, 1);
+    node_alloc_traits::construct(d_node_alloc, node,
                                  std::forward<Args>(args)...);
-    link_(pos.node_->prev_, node, pos.node_);
+    link_(pos.d_node_p->d_prev_p, node, pos.d_node_p);
     return iterator{node};
   }
 
   void erase(const iterator &iter) {
-    link_(iter.node_->prev_, iter.node_->next_);
-    node_alloc_traits::destroy(node_alloc_, iter.node_);
-    node_alloc_traits::deallocate(node_alloc_, static_cast<Node *>(iter.node_),
-                                  1);
+    link_(iter.d_node_p->d_prev_p, iter.d_node_p->d_next_p);
+    node_alloc_traits::destroy(d_node_alloc, iter.d_node_p);
+    node_alloc_traits::deallocate(d_node_alloc,
+                                  static_cast<Node *>(iter.d_node_p), 1);
   }
 
   void push_back(const_reference data) { insert(end(), data); }
@@ -438,12 +461,12 @@ class list {
   void swap(list &other) noexcept {
     if (std::allocator_traits<
             allocator_type>::propagate_on_container_swap::value) {
-      std::swap(alloc_, other.alloc_);
+      std::swap(d_alloc, other.d_alloc);
     }
     if (node_alloc_traits::propagate_on_container_swap::value) {
-      std::swap(node_alloc_, other.node_alloc_);
+      std::swap(d_node_alloc, other.d_node_alloc);
     }
-    std::swap(head_, other.head_);
+    std::swap(d_head, other.d_head);
   }
 
   /* Operations */
@@ -472,11 +495,11 @@ class list {
       if (comp(*rhs, *lhs)) {
         // node.prev <-> node.next
         // lhs.prev <-> rhs <-> lhs <-> lhs.next
-        auto node = rhs.node_;
+        auto node = rhs.d_node_p;
         ++rhs;
-        link_(node->prev_, node->next_);
-        link_(lhs.node_->prev_, node, lhs.node_);
-        lhs.node_ = node;
+        link_(node->d_prev_p, node->d_next_p);
+        link_(lhs.d_node_p->d_prev_p, node, lhs.d_node_p);
+        lhs.d_node_p = node;
       }
     }
     // Appends remainder if we didn't reach the end
@@ -510,12 +533,12 @@ class list {
     iterator ifirst = first.un_const();
     iterator ilast = last.un_const();
 
-    auto final_node = ilast.node_->prev_;
+    auto final_node = ilast.d_node_p->d_prev_p;
     // Fix pointers in other
-    link_(ifirst.node_->prev_, ilast.node_);
+    link_(ifirst.d_node_p->d_prev_p, ilast.d_node_p);
 
-    link_(ipos.node_->prev_, ifirst.node_);
-    link_(final_node, ipos.node_);
+    link_(ipos.d_node_p->d_prev_p, ifirst.d_node_p);
+    link_(final_node, ipos.d_node_p);
   }
 
   void remove(const T &value) {
@@ -532,7 +555,7 @@ class list {
   void reverse() noexcept {
     iterator it = end();
     do {
-      std::swap(it.node_->prev_, it.node_->next_);
+      std::swap(it.d_node_p->d_prev_p, it.d_node_p->d_next_p);
     } while (++it != end());
   }
 
@@ -623,8 +646,8 @@ class list {
 #ifdef LIST_DBG_ON
   bool verify_integrity() {
     for (iterator it = begin(); it != end(); it++) {
-      if (it.node_ != it.node_->prev_->next_ ||
-          it.node_ != it.node_->next_->prev_)
+      if (it.d_node_p != it.d_node_p->d_prev_p->d_next_p ||
+          it.d_node_p != it.d_node_p->d_next_p->d_prev_p)
         return false;
     }
     return true;
@@ -638,9 +661,9 @@ class list {
 
  private:
 #endif
-  Node_Base head_;
-  allocator_type alloc_;
-  node_allocator_type node_alloc_;
+  Node_Base d_head;
+  allocator_type d_alloc;
+  node_allocator_type d_node_alloc;
 };
 
 /*

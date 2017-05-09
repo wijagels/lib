@@ -26,36 +26,33 @@ class Point {
    */
   template <typename = typename std::enable_if<
                 std::is_default_constructible<T>::value>::type>
-  Point() : coordinates_{} {
-    coordinates_.fill(T{});
+  Point() : d_coordinates{} {
+    d_coordinates.fill(T{});
   }
 
   Point(const std::initializer_list<T>& v) {
     if (v.size() != D)
       throw std::length_error{"Initializer list is incorrectly sized"};
-    std::copy(v.begin(), v.end(), coordinates_.begin());
+    std::copy(v.begin(), v.end(), d_coordinates.begin());
   }
 
-  explicit Point(const std::array<T, D>& arr) : coordinates_{arr} {}
+  explicit Point(const std::array<T, D>& arr) : d_coordinates{arr} {}
 
   /*
    * No bounds check, returns by value
    */
-  T operator[](size_t dimension) { return coordinates_[dimension]; }
+  T operator[](size_t dimension) { return d_coordinates[dimension]; }
 
-  const T operator[](size_t dimension) const { return coordinates_[dimension]; }
+  const T operator[](size_t dimension) const {
+    return d_coordinates[dimension];
+  }
 
   /*
    * Bounds checked, returns reference
    */
-  T& at(size_t dimension) { return coordinates_.at(dimension); }
+  T& at(size_t dimension) { return d_coordinates.at(dimension); }
 
-  const T& at(size_t dimension) const { return coordinates_.at(dimension); }
-
-  Point<D>& operator=(const Point& other) {
-    this->coordinates_ = other.coordinates_;
-    return *this;
-  }
+  const T& at(size_t dimension) const { return d_coordinates.at(dimension); }
 
   /*
    * Projects the point orthogonally onto a new point of dimension DIMEN_TO.
@@ -68,21 +65,21 @@ class Point {
     std::array<T, DIMEN_TO> arr{};
     arr.fill(T{});
     // Copy up to current dimension or DIMEN_TO, whichever is smallest
-    std::copy(coordinates_.begin(),
-              coordinates_.begin() + std::min(D, DIMEN_TO), arr.begin());
+    std::copy(d_coordinates.begin(),
+              d_coordinates.begin() + std::min(D, DIMEN_TO), arr.begin());
     return Point<DIMEN_TO, T>{arr};
   }
 
   friend bool operator==(const Point<D>& lhs, const Point<D>& rhs) {
-    return lhs.coordinates_ == rhs.coordinates_;
+    return lhs.d_coordinates == rhs.d_coordinates;
   }
 
   friend bool operator!=(const Point<D>& lhs, const Point<D>& rhs) {
-    return lhs.coordinates_ != rhs.coordinates_;
+    return lhs.d_coordinates != rhs.d_coordinates;
   }
 
  private:
-  std::array<T, D> coordinates_;
+  std::array<T, D> d_coordinates;
 };
 
 /*
@@ -138,7 +135,7 @@ std::ostream& operator<<(std::ostream& os, const Point<D>& point) {
  */
 template <size_t D>
 void swap(Point<D>& lhs, Point<D>& rhs) {
-  swap(lhs.coordinates_, rhs.coordinates_);
+  swap(lhs.d_coordinates, rhs.d_coordinates);
 }
 
 namespace std {
@@ -148,7 +145,7 @@ namespace std {
 template <size_t D>
 struct hash<Point<D>> {
   size_t operator()(const Point<D>& x) const {
-    return hash<array<double, D>>()(x.coordinates_);
+    return hash<array<double, D>>()(x.d_coordinates);
   }
 };
 }  // namespace std

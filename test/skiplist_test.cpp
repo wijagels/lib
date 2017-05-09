@@ -70,6 +70,9 @@ struct nocopy {
   nocopy(int n) : data{n} {}
   nocopy(const nocopy&) = delete;
   nocopy(nocopy&&) = default;
+  ~nocopy() = default;
+  nocopy& operator=(const nocopy&) = delete;
+  nocopy& operator=(nocopy&&) = delete;
   friend bool operator==(const nocopy& lhs, const nocopy& rhs) {
     return lhs.data == rhs.data;
   }

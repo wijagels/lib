@@ -2,6 +2,7 @@
 #ifndef INCLUDE_MAP_HPP_
 #define INCLUDE_MAP_HPP_
 #include <functional>
+#include <iostream>
 #include <memory>
 #include <type_traits>
 #include <utility>
@@ -16,7 +17,6 @@ struct InsertReturnType {
   NodeType node;
 };
 }  // namespace detail
-
 template <class Key, class T, class Compare = std::less<Key>,
           class Allocator = std::allocator<std::pair<const Key, T>>>
 class map {
@@ -36,30 +36,33 @@ class map {
   class value_compare {
    protected:
     friend map;
-    explicit value_compare(Compare c) : c_{c} {}
-    const Compare c_;
+    explicit value_compare(Compare c) : d_comp{c} {}
+    Compare d_comp;
 
    public:
     constexpr bool operator()(const value_type& lhs,
                               const value_type& rhs) const {
-      return c_(lhs.first, rhs.first);
+      return d_comp(lhs.first, rhs.first);
     }
     constexpr bool operator()(const key_type& lhs,
                               const value_type& rhs) const {
-      return c_(lhs, rhs.first);
+      return d_comp(lhs, rhs.first);
     }
     constexpr bool operator()(const value_type& lhs,
                               const key_type& rhs) const {
-      return c_(lhs.first, rhs);
+      return d_comp(lhs.first, rhs);
     }
     constexpr bool operator()(const key_type& lhs, const key_type& rhs) const {
-      return c_(lhs, rhs);
+      return d_comp(lhs, rhs);
     }
   };
   using container_type = skiplist<value_type, value_compare, allocator_type>;
   using iterator = typename container_type::iterator;
   using const_iterator = typename container_type::const_iterator;
   using reverse_iterator = typename container_type::reverse_iterator;
+  using Iterator = iterator;
+  using ConstIterator = const_iterator;
+  using ReverseIterator = reverse_iterator;
   using const_reverse_iterator =
       typename container_type::const_reverse_iterator;
   using node_type = typename container_type::node_type;
@@ -70,10 +73,10 @@ class map {
   map() : map{Compare()} {}
 
   explicit map(const Compare& comp, const Allocator& alloc = Allocator{})
-      : comp_{comp},
-        val_comp_{comp},
-        alloc_{alloc},
-        container_{val_comp_, alloc_} {}
+      : d_comp{comp},
+        d_val_comp{comp},
+        d_alloc{alloc},
+        d_container{d_val_comp, d_alloc} {}
 
   explicit map(const Allocator& alloc) : map{Compare{}, alloc} {}
 
@@ -88,19 +91,40 @@ class map {
   map(InputIterator first, InputIterator last, const Allocator& alloc)
       : map{first, last, Compare(), alloc} {}
 
-  map(const map& other) = default;
+  map(const map& other)
+      : d_comp{other.d_comp},
+        d_val_comp{other.d_val_comp},
+        d_alloc{other.d_alloc},
+        d_container{other.d_container} {}
 
-  map(const map& other, const Allocator& alloc);
+  map(const map& other, const Allocator& alloc)
+      : d_comp{other.d_comp},
+        d_val_comp{other.d_val_comp},
+        d_alloc{alloc},
+        d_container{other.d_container} {}
 
-  map(map&& other);
+  map(map&& other)
+      : d_comp{std::move(other.d_comp)},
+        d_val_comp{std::move(other.d_val_comp)},
+        d_alloc{std::move(other.d_alloc)},
+        d_container{std::move(other.d_container)} {}
 
-  map(map&& other, const Allocator& alloc);
+  map(map&& other, const Allocator& alloc)
+      : d_comp{std::move(other.d_comp)},
+        d_val_comp{std::move(other.d_val_comp)},
+        d_alloc{alloc},
+        d_container{std::move(other.d_container)} {}
 
-  map(std::initializer_list<value_type> init, const Compare& comp = Compare(),
-      const Allocator& alloc = Allocator())
-      : map{comp, alloc} {
+  map(std::initializer_list<value_type> init) : map{Compare(), Allocator()} {
     insert(init);
   }
+
+  //   map(std::initializer_list<value_type> init, const Compare& comp =
+  //   Compare(),
+  //       const Allocator& alloc = Allocator())
+  //       : map{comp, alloc} {
+  //     insert(init);
+  //   }
 
   map(std::initializer_list<value_type> init, const Allocator& alloc)
       : map{alloc} {
@@ -112,92 +136,98 @@ class map {
 
   /* Assignment */
   map& operator=(const map& other) {
-    val_comp_ = other.val_comp_;
-    alloc_ = other.alloc_;
-    container_ = other.container_;
+    if (this == &other) return *this;
+    clear();
+    d_comp = other.d_comp;
+    d_val_comp = value_compare{d_comp};
+    d_alloc = other.d_alloc;
+    d_container = other.d_container;
+    return *this;
   }
 
   map& operator=(map&& other) noexcept(
       std::allocator_traits<Allocator>::is_always_equal::value&&
           std::is_nothrow_move_assignable<Compare>::value) {
-    val_comp_ = other.val_comp_;
+    d_val_comp = other.d_val_comp;
     if (std::allocator_traits<
             allocator_type>::propagate_on_container_move_assignment()) {
-      alloc_ = other.alloc_;
+      d_alloc = other.d_alloc;
     }
-    container_ = std::move(other.container_);
+    d_container = std::move(other.d_container);
   }
 
   map& operator=(std::initializer_list<value_type> ilist) {
-    container_ = ilist;
+    d_container = ilist;
   }
 
   /* Allocator */
-  allocator_type get_allocator() const { return alloc_; }
+  allocator_type get_allocator() const { return d_alloc; }
 
   /* Element access */
   T& at(const Key& key) {
-    iterator it = container_.find(key);
-    if (it == container_.end()) throw std::out_of_range{"Key not found"};
+    iterator it = d_container.find(key);
+    if (it == d_container.end()) throw std::out_of_range{"Key not found"};
     return it->second;
   }
 
   const T& at(const Key& key) const {
-    auto it = container_.find(key);
-    if (it == container_.end()) throw std::out_of_range{"Key not found"};
+    auto it = d_container.find(key);
+    if (it == d_container.end()) throw std::out_of_range{"Key not found"};
     return it->second;
   }
 
   T& operator[](const Key& key) {
-    auto it = container_.find(key);
-    if (it != container_.end()) return it->second;
-    return container_.emplace(key, mapped_type{}).first->second;
+    auto it = d_container.find(key);
+    if (it != d_container.end()) return it->second;
+    return d_container.emplace(key, mapped_type{}).first->second;
   }
 
   T& operator[](Key&& key) {
-    auto it = container_.find(key);
-    if (it != container_.end()) return it->second;
-    return container_.emplace(std::move(key), mapped_type{}).first->second;
+    auto it = d_container.find(key);
+    if (it != d_container.end()) return it->second;
+    return d_container.emplace(std::move(key), mapped_type{}).first->second;
   }
 
   /* Iterators */
-  iterator begin() noexcept { return container_.begin(); }
-  iterator end() noexcept { return container_.end(); }
-  const_iterator begin() const noexcept { return container_.begin(); }
-  const_iterator end() const noexcept { return container_.end(); }
-  const_iterator cbegin() const noexcept { return container_.cbegin(); }
-  const_iterator cend() const noexcept { return container_.cend(); }
-  reverse_iterator rbegin() noexcept { return container_.rbegin(); }
-  reverse_iterator rend() noexcept { return container_.rend(); }
-  const_reverse_iterator rbegin() const noexcept { return container_.rbegin(); }
-  const_reverse_iterator rend() const noexcept { return container_.rend(); }
-  const_reverse_iterator crbegin() const noexcept {
-    return container_.crbegin();
+  iterator begin() noexcept { return d_container.begin(); }
+  iterator end() noexcept { return d_container.end(); }
+  const_iterator begin() const noexcept { return d_container.begin(); }
+  const_iterator end() const noexcept { return d_container.end(); }
+  const_iterator cbegin() const noexcept { return d_container.cbegin(); }
+  const_iterator cend() const noexcept { return d_container.cend(); }
+  reverse_iterator rbegin() noexcept { return d_container.rbegin(); }
+  reverse_iterator rend() noexcept { return d_container.rend(); }
+  const_reverse_iterator rbegin() const noexcept {
+    return d_container.rbegin();
   }
-  const_reverse_iterator crend() const noexcept { return container_.crend(); }
+  const_reverse_iterator rend() const noexcept { return d_container.rend(); }
+  const_reverse_iterator crbegin() const noexcept {
+    return d_container.crbegin();
+  }
+  const_reverse_iterator crend() const noexcept { return d_container.crend(); }
 
   /* Capacity */
-  bool empty() const { return container_.empty(); }
-  size_type size() const { return container_.size(); }
-  size_type max_size() const { return container_.max_size(); }
+  bool empty() const { return d_container.empty(); }
+  size_type size() const { return d_container.size(); }
+  size_type max_size() const { return d_container.max_size(); }
 
   /* Modifiers */
-  void clear() { container_.clear(); }
+  void clear() { d_container.clear(); }
 
   std::pair<iterator, bool> insert(const value_type& value) {
-    return container_.insert(value);
+    return d_container.insert(value);
   }
 
   std::pair<iterator, bool> insert(value_type&& value) {
-    return container_.insert(std::move(value));
+    return d_container.insert(std::move(value));
   }
 
   iterator insert(const_iterator hint, const value_type& value) {
-    return container_.insert(hint, value);
+    return d_container.insert(hint, value);
   }
 
   iterator insert(const_iterator hint, value_type&& value) {
-    return container_.insert(hint, std::move(value));
+    return d_container.insert(hint, std::move(value));
   }
 
   template <class InputIt>
@@ -215,7 +245,7 @@ class map {
 
   template <class... Args>
   std::pair<iterator, bool> emplace(Args&&... args) {
-    return container_.emplace(std::forward<Args>(args)...);
+    return d_container.emplace(std::forward<Args>(args)...);
   }
 
   template <class... Args>
@@ -230,8 +260,8 @@ class map {
 
   template <class... Args>
   iterator try_emplace(const_iterator hint, const key_type& k, Args&&... args) {
-    auto it = container_.find(k);
-    if (it != container_.end()) return {it, false};
+    auto it = d_container.find(k);
+    if (it != d_container.end()) return {it, false};
     return emplace_hint(hint, std::piecewise_construct,
                         std::forward_as_tuple(k),
                         std::forward_as_tuple(std::forward<Args>(args)...));
@@ -239,36 +269,36 @@ class map {
 
   template <class... Args>
   iterator try_emplace(const_iterator hint, key_type&& k, Args&&... args) {
-    auto it = container_.find(k);
-    if (it != container_.end()) return {it, false};
+    auto it = d_container.find(k);
+    if (it != d_container.end()) return {it, false};
     return emplace_hint(hint, std::piecewise_construct,
                         std::forward_as_tuple(std::move(k)),
                         std::forward_as_tuple(std::forward<Args>(args)...));
   }
 
-  iterator erase(const_iterator pos) { return container_.erase(pos); }
+  iterator erase(const_iterator pos) { return d_container.erase(pos); }
 
-  iterator erase(iterator pos) { return container_.erase(pos); }
+  iterator erase(iterator pos) { return d_container.erase(pos); }
 
   iterator erase(const_iterator first, const_iterator last) {
-    return container_.erase(first, last);
+    return d_container.erase(first, last);
   }
 
-  size_type erase(const key_type& key) { return container_.erase(key); }
+  size_type erase(const key_type& key) { return d_container.erase(key); }
 
   void swap(map& other) noexcept(
       std::allocator_traits<Allocator>::is_always_equal::value&&
           std::__is_nothrow_swappable<Compare>::value) {
-    std::swap(val_comp_, other.val_comp_);
-    std::swap(container_, other.container_);
+    std::swap(d_val_comp, other.d_val_comp);
+    std::swap(d_container, other.d_container);
   }
 
   node_type extract(const_iterator position) {
-    return container_.extract(position);
+    return d_container.extract(position);
   }
   node_type extract(const key_type& x) {
-    auto it = container_.find(x);
-    if (it != container_.end()) return extract(it);
+    auto it = d_container.find(x);
+    if (it != d_container.end()) return extract(it);
     return node_type{};
   }
 
@@ -279,7 +309,7 @@ class map {
 
   template <class C2>
   void merge(map<Key, T, C2, Allocator>&& source) {
-    return container_.merge(std::move(source.container_));
+    return d_container.merge(std::move(source.d_container));
   }
 
   /* Lookup */
@@ -292,12 +322,12 @@ class map {
 
   template <class K>
   iterator find(const K& x) {
-    return container_.find(x);
+    return d_container.find(x);
   }
 
   template <class K>
   const_iterator find(const K& x) const {
-    return container_.find(x);
+    return d_container.find(x);
   }
 
   template <class K>
@@ -348,16 +378,75 @@ class map {
 
   /* Observers */
 
-  key_compare key_comp() const { return comp_; }
+  key_compare key_comp() const { return d_comp; }
 
-  value_compare value_comp() const { return val_comp_; }
+  value_compare value_comp() const { return d_val_comp; }
 
  private:
-  key_compare comp_;
-  value_compare val_comp_;
-  allocator_type alloc_;
-  container_type container_;
+  key_compare d_comp;
+  value_compare d_val_comp;
+  allocator_type d_alloc;
+  container_type d_container;
 };
+
+template <class Key, class T, class Compare, class Alloc>
+bool operator==(const map<Key, T, Compare, Alloc>& lhs,
+                const map<Key, T, Compare, Alloc>& rhs) {
+  auto cmp = lhs.value_comp();
+  auto first1 = lhs.begin();
+  auto last1 = lhs.end();
+  auto first2 = rhs.begin();
+  auto last2 = rhs.end();
+  for (; first1 != last1; ++first1, ++first2) {
+    if (cmp(first1->first, first2->first) ||
+        cmp(first2->first, first1->first) ||
+        !(first1->second == first2->second)) {
+      return false;
+    }
+  }
+  return (first1 == last1) && (first2 == last2);
+}
+
+template <class Key, class T, class Compare, class Alloc>
+bool operator!=(const map<Key, T, Compare, Alloc>& lhs,
+                const map<Key, T, Compare, Alloc>& rhs) {
+  return !(lhs == rhs);
+}
+
+template <class Key, class T, class Compare, class Alloc>
+bool operator<(const map<Key, T, Compare, Alloc>& lhs,
+               const map<Key, T, Compare, Alloc>& rhs) {
+  auto cmp = lhs.value_comp();
+  auto first1 = lhs.begin();
+  auto last1 = lhs.end();
+  auto first2 = rhs.begin();
+  auto last2 = rhs.end();
+  for (; first1 != last1; ++first1, ++first2) {
+    if (cmp(first1->first, first2->first) || (first1->second < first2->second))
+      return true;
+    if (cmp(first2->first, first1->first) || first2->second < first1->second)
+      return false;
+  }
+  return (first1 == last1) && (first2 != last2);
+}
+
+template <class Key, class T, class Compare, class Alloc>
+bool operator<=(const map<Key, T, Compare, Alloc>& lhs,
+                const map<Key, T, Compare, Alloc>& rhs) {
+  return (lhs < rhs) || (lhs == rhs);
+}
+
+template <class Key, class T, class Compare, class Alloc>
+bool operator>(const map<Key, T, Compare, Alloc>& lhs,
+               const map<Key, T, Compare, Alloc>& rhs) {
+  return rhs < lhs;
+}
+template <class Key, class T, class Compare, class Alloc>
+bool operator>=(const map<Key, T, Compare, Alloc>& lhs,
+                const map<Key, T, Compare, Alloc>& rhs) {
+  return rhs <= lhs;
+}
+
 }  // namespace wijagels
 
 #endif  // INCLUDE_MAP_HPP_

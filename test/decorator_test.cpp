@@ -9,7 +9,7 @@ void sleeper(int);
 
 void sleeper(int k) {
   timespec ts{0, k};
-  nanosleep(&ts, NULL);
+  nanosleep(&ts, nullptr);
 }
 
 template <typename T, typename U>
