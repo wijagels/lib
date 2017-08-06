@@ -7,9 +7,9 @@
 
 using wijagels::skiplist;
 
-const std::initializer_list<int> seed{1, 2, 4, 3};
-const std::initializer_list<int> sorted{1, 2, 3, 4};
-const std::initializer_list<int> rand_list{
+const std::initializer_list<int> g_seed{1, 2, 4, 3};
+const std::initializer_list<int> g_sorted{1, 2, 3, 4};
+const std::initializer_list<int> g_rand_list{
     1471, 6313, 9678, 9176, 6683, 420,  6651, 9767, 1027, 1854, 9327, 205,
     9076, 356,  4511, 3581, 7617, 456,  5413, 669,  6762, 9944, 1464, 3731,
     2945, 7505, 4286, 690,  3707, 8977, 6927, 9602, 7354, 4482, 7955, 498,
@@ -53,17 +53,18 @@ const std::initializer_list<int> rand_list{
     5458, 1316, 1669, 1654, 4867, 5462, 5634, 7161, 9924, 2933, 9919, 7964,
     4993, 7686, 605,  1852, 7314, 4625, 8951, 1063};
 
-const std::initializer_list<int> md_list{
+const std::initializer_list<int> g_md_list{
     1471, 6313, 9678, 9176, 6683, 420, 6651, 9767, 1027, 1854, 9327, 205,
     9076, 356,  4511, 420,  7617, 456, 5413, 669,  6762, 9944, 1464, 3731,
 };
 
 BOOST_AUTO_TEST_CASE(insert_test) {
   skiplist<int> s{};
-  for (auto e : seed) {
+  for (auto e : g_seed) {
     s.insert(e);
   }
-  BOOST_REQUIRE(std::equal(s.begin(), s.end(), sorted.begin(), sorted.end()));
+  BOOST_REQUIRE(
+      std::equal(s.begin(), s.end(), g_sorted.begin(), g_sorted.end()));
 }
 
 struct nocopy {
@@ -92,9 +93,9 @@ BOOST_AUTO_TEST_CASE(move_insert_test) {
 }
 
 BOOST_AUTO_TEST_CASE(med_insert_test) {
-  std::set<int> rand_list_sorted = md_list;
+  std::set<int> rand_list_sorted = g_md_list;
   skiplist<int> s{};
-  for (auto e : md_list) {
+  for (auto e : g_md_list) {
     s.insert(e);
   }
   BOOST_REQUIRE(std::equal(s.begin(), s.end(), rand_list_sorted.begin(),
@@ -102,9 +103,9 @@ BOOST_AUTO_TEST_CASE(med_insert_test) {
 }
 
 BOOST_AUTO_TEST_CASE(big_insert_test) {
-  std::set<int> rand_list_sorted = rand_list;
+  std::set<int> rand_list_sorted = g_rand_list;
   skiplist<int> s{};
-  for (auto e : rand_list) {
+  for (auto e : g_rand_list) {
     s.insert(e);
   }
   BOOST_REQUIRE(std::equal(s.begin(), s.end(), rand_list_sorted.begin(),
@@ -112,9 +113,9 @@ BOOST_AUTO_TEST_CASE(big_insert_test) {
 }
 
 BOOST_AUTO_TEST_CASE(big_emplace_test) {
-  std::set<int> rand_list_sorted = rand_list;
+  std::set<int> rand_list_sorted = g_rand_list;
   skiplist<int> s{};
-  for (auto e : rand_list) {
+  for (auto e : g_rand_list) {
     s.emplace(e);
   }
   BOOST_REQUIRE(std::equal(s.begin(), s.end(), rand_list_sorted.begin(),
@@ -219,14 +220,14 @@ BOOST_AUTO_TEST_CASE(size_test) {
 }
 
 BOOST_AUTO_TEST_CASE(move_test) {
-  skiplist<int> list{rand_list};
+  skiplist<int> list{g_rand_list};
   skiplist<int> nls{1};
   BOOST_TEST_MESSAGE("Running move_test, if this takes long something's wrong");
   for (int i = 0; i < 1e7; i++) {
     nls = std::move(list);
     list = std::move(nls);
   }
-  skiplist<int> result{rand_list};
+  skiplist<int> result{g_rand_list};
   BOOST_REQUIRE(
       std::equal(list.begin(), list.end(), result.begin(), result.end()));
   BOOST_TEST_MESSAGE("Passed move_test");
