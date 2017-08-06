@@ -15,7 +15,7 @@ struct DecoratorHook {
 
 template <typename H, typename R, typename... Args>
 struct Decorator<R(Args...), H> {
-  Decorator(std::function<R(Args...)> f, const H& hook)
+  Decorator(std::function<R(Args...)> f, const H &hook)
       : f_{std::move(f)}, hook_{hook} {}
 
   R operator()(Args... args) {
@@ -41,7 +41,7 @@ struct Decorator<R(Args...), H> {
  */
 template <typename H, typename... Args>
 struct Decorator<void(Args...), H> {
-  Decorator(std::function<void(Args...)> f, const H& hook)
+  Decorator(std::function<void(Args...)> f, const H &hook)
       : f_{std::move(f)}, hook_{hook} {}
 
   void operator()(Args... args) {

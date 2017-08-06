@@ -3,11 +3,11 @@
 #define BOOST_TEST_MAIN
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE list test
+#include "Allocator.hpp"
 #include <boost/pool/pool_alloc.hpp>
 #include <boost/test/unit_test.hpp>
 #include <iostream>
 #include <random>
-#include "Allocator.hpp"
 
 using wijagels::list;
 using wijagels::BasicAllocator;
@@ -116,15 +116,16 @@ struct StrictStruct {
    * This is a struct that cannot be copy, default, or move constructed.
    */
   StrictStruct() = delete;
-  StrictStruct(const StrictStruct&) = delete;
-  StrictStruct(StrictStruct&&) = delete;
+  StrictStruct(const StrictStruct &) = delete;
+  StrictStruct(StrictStruct &&) = delete;
   StrictStruct(int a, double b) : a_{a}, b_{b} {}
-  StrictStruct& operator=(const StrictStruct&) = delete;
-  StrictStruct& operator=(StrictStruct&&) = delete;
-  friend bool operator==(const StrictStruct& lhs, const StrictStruct& rhs) {
+  ~StrictStruct() = default;
+  StrictStruct &operator=(const StrictStruct &) = delete;
+  StrictStruct &operator=(StrictStruct &&) = delete;
+  friend bool operator==(const StrictStruct &lhs, const StrictStruct &rhs) {
     return lhs.a_ == rhs.a_ && lhs.b_ == rhs.b_;
   }
-  friend bool operator<(const StrictStruct& lhs, const StrictStruct& rhs) {
+  friend bool operator<(const StrictStruct &lhs, const StrictStruct &rhs) {
     return lhs.a_ < rhs.a_;
   }
   int a_;
@@ -247,7 +248,7 @@ BOOST_AUTO_TEST_CASE(remove_if_test) {
   list<int> lst1{0, 1, 1, 1, 30, 0, 0, 1, 0};
   list<int> result{1, 1, 1, 30, 1};
   size_t n = lst1.size();
-  lst1.remove_if([&n](const int& i) {
+  lst1.remove_if([&n](const int &i) {
     --n;
     return i == 0;
   });
@@ -255,7 +256,7 @@ BOOST_AUTO_TEST_CASE(remove_if_test) {
   BOOST_REQUIRE_EQUAL(n, 0);
   BOOST_REQUIRE(
       std::equal(lst1.begin(), lst1.end(), result.begin(), result.end()));
-  lst1.remove_if([](const int&) { return true; });
+  lst1.remove_if([](const int &) { return true; });
   BOOST_REQUIRE(lst1.empty());
 }
 
@@ -350,8 +351,8 @@ BOOST_AUTO_TEST_CASE(iterator_test) {
 
 template <typename T>
 struct pointer_traits {
-  using reference = T&;
-  using const_reference = const T&;
+  using reference = T &;
+  using const_reference = const T &;
 };
 
 template <>
@@ -362,25 +363,23 @@ struct MyAllocator : public pointer_traits<T> {
  public:
   using value_type = T;
   using size_type = std::size_t;
-  using pointer = T*;
-  using const_pointer = const T*;
+  using pointer = T *;
+  using const_pointer = const T *;
   using difference_type =
       typename std::pointer_traits<pointer>::difference_type;
 
   MyAllocator() = default;
 
-  ~MyAllocator() = default;
-
   template <typename U>
-  MyAllocator(const MyAllocator<U>&) noexcept {}
+  MyAllocator(const MyAllocator<U> &) noexcept {}
 
-  T* allocate(size_t, const void* = nullptr) {
+  T *allocate(size_t, const void * = nullptr) {
     auto ptr = new T;
     ++counter;
     return ptr;
   }
 
-  void deallocate(T* ptr, size_t) { delete ptr; }
+  void deallocate(T *ptr, size_t) { delete ptr; }
 
   template <typename U>
   struct rebind {
@@ -390,12 +389,12 @@ struct MyAllocator : public pointer_traits<T> {
   size_t counter{};
 };
 template <typename T, typename U>
-constexpr bool operator==(const MyAllocator<T>&,
-                          const MyAllocator<U>&) noexcept;
+constexpr bool operator==(const MyAllocator<T> &,
+                          const MyAllocator<U> &) noexcept;
 
 template <typename T, typename U>
-constexpr bool operator!=(const MyAllocator<T>&,
-                          const MyAllocator<U>&) noexcept;
+constexpr bool operator!=(const MyAllocator<T> &,
+                          const MyAllocator<U> &) noexcept;
 
 BOOST_AUTO_TEST_CASE(allocator_test) {
   MyAllocator<int> pool{};

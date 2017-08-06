@@ -243,9 +243,9 @@ class list {
     }
   }
 
-  list(const list &other) : d_alloc{} {
-    d_alloc = std::allocator_traits<
-        allocator_type>::select_on_container_copy_construction(other.d_alloc);
+  list(const list &other)
+      : d_alloc{std::allocator_traits<allocator_type>::
+                    select_on_container_copy_construction(other.d_alloc)} {
     for (const_reference e : other) push_back(e);
   }
 

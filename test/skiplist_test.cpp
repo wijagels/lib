@@ -1,9 +1,9 @@
 #define BOOST_TEST_MAIN
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE SkipList test
+#include "SkipList.hpp"
 #include <boost/test/unit_test.hpp>
 #include <set>
-#include "SkipList.hpp"
 
 using wijagels::skiplist;
 
@@ -68,15 +68,15 @@ BOOST_AUTO_TEST_CASE(insert_test) {
 
 struct nocopy {
   nocopy(int n) : data{n} {}
-  nocopy(const nocopy&) = delete;
-  nocopy(nocopy&&) = default;
+  nocopy(const nocopy &) = delete;
+  nocopy(nocopy &&) = default;
   ~nocopy() = default;
-  nocopy& operator=(const nocopy&) = delete;
-  nocopy& operator=(nocopy&&) = delete;
-  friend bool operator==(const nocopy& lhs, const nocopy& rhs) {
+  nocopy &operator=(const nocopy &) = delete;
+  nocopy &operator=(nocopy &&) = delete;
+  friend bool operator==(const nocopy &lhs, const nocopy &rhs) {
     return lhs.data == rhs.data;
   }
-  friend bool operator<(const nocopy& lhs, const nocopy& rhs) {
+  friend bool operator<(const nocopy &lhs, const nocopy &rhs) {
     return lhs.data < rhs.data;
   }
   int data;

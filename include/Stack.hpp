@@ -1,8 +1,8 @@
 // Copyright 2017 William Jagels
 #ifndef INCLUDE_STACK_HPP_
 #define INCLUDE_STACK_HPP_
-#include <utility>
 #include "List.hpp"
+#include <utility>
 
 namespace wijagels {
 template <typename T, typename Container = list<T>>
@@ -14,22 +14,22 @@ class stack {
   using reference = typename container_type::reference;
   using const_reference = typename container_type::const_reference;
 
-  explicit stack(const container_type& cont) : c{cont} {}
-  explicit stack(container_type&& cont = container_type()) : c{cont} {}
-  stack(const stack& other) : c{other.c} {}
-  stack(stack&& other) : c{std::move(other.c)} {}
+  explicit stack(const container_type &cont) : c{cont} {}
+  explicit stack(container_type &&cont = container_type()) : c{cont} {}
+  stack(const stack &other) : c{other.c} {}
+  stack(stack &&other) : c{std::move(other.c)} {}
   template <class Alloc>
-  explicit stack(const Alloc& alloc) : c{alloc} {}
+  explicit stack(const Alloc &alloc) : c{alloc} {}
   template <class Alloc>
-  stack(const container_type& cont, const Alloc& alloc) : c{cont, alloc} {}
+  stack(const container_type &cont, const Alloc &alloc) : c{cont, alloc} {}
   template <class Alloc>
-  stack(container_type&& cont, const Alloc& alloc) : c{cont, alloc} {}
+  stack(container_type &&cont, const Alloc &alloc) : c{cont, alloc} {}
   template <class Alloc>
-  stack(const stack& other, const Alloc& alloc) : c{other.c, alloc} {}
+  stack(const stack &other, const Alloc &alloc) : c{other.c, alloc} {}
   template <class Alloc>
-  stack(stack&& other, const Alloc& alloc) : c{std::move(other.c), alloc} {}
+  stack(stack &&other, const Alloc &alloc) : c{std::move(other.c), alloc} {}
 
-  stack operator=(const stack& other) { c = other.c; }
+  stack operator=(const stack &other) { c = other.c; }
 
   /* Element access */
   reference top() { return c.back(); }
@@ -39,46 +39,46 @@ class stack {
   bool empty() const { return c.empty(); }
 
   /* Modifiers */
-  void push(const value_type& value) { c.push_back(value); }
-  void push(value_type&& value) { c.push_back(value); }
+  void push(const value_type &value) { c.push_back(value); }
+  void push(value_type &&value) { c.push_back(value); }
 
   template <class... Args>
-  reference emplace(Args&&... args) {
+  reference emplace(Args &&... args) {
     return c.emplace_back(std::forward<Args>(args)...);
   }
 
   void pop() { c.pop_back(); }
 
-  void swap(stack& other) { c.swap(other.c); }
+  void swap(stack &other) { c.swap(other.c); }
 
   container_type c;
 };
 template <class T, class Container>
-bool operator==(const stack<T, Container>& lhs,
-                const stack<T, Container>& rhs) {
+bool operator==(const stack<T, Container> &lhs,
+                const stack<T, Container> &rhs) {
   return lhs.c == rhs.c;
 }
 template <class T, class Container>
-bool operator!=(const stack<T, Container>& lhs,
-                const stack<T, Container>& rhs) {
+bool operator!=(const stack<T, Container> &lhs,
+                const stack<T, Container> &rhs) {
   return lhs.c != rhs.c;
 }
 template <class T, class Container>
-bool operator<(const stack<T, Container>& lhs, const stack<T, Container>& rhs) {
+bool operator<(const stack<T, Container> &lhs, const stack<T, Container> &rhs) {
   return lhs < rhs;
 }
 template <class T, class Container>
-bool operator<=(const stack<T, Container>& lhs,
-                const stack<T, Container>& rhs) {
+bool operator<=(const stack<T, Container> &lhs,
+                const stack<T, Container> &rhs) {
   return lhs <= rhs;
 }
 template <class T, class Container>
-bool operator>(const stack<T, Container>& lhs, const stack<T, Container>& rhs) {
+bool operator>(const stack<T, Container> &lhs, const stack<T, Container> &rhs) {
   return lhs > rhs;
 }
 template <class T, class Container>
-bool operator>=(const stack<T, Container>& lhs,
-                const stack<T, Container>& rhs) {
+bool operator>=(const stack<T, Container> &lhs,
+                const stack<T, Container> &rhs) {
   return lhs >= rhs;
 }
 }  // namespace wijagels
