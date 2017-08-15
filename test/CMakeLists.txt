@@ -19,6 +19,9 @@ target_link_libraries(map_test ${Boost_LIBRARIES})
 add_executable(vector_test vector_test.cpp)
 target_link_libraries(vector_test ${Boost_LIBRARIES})
 
+add_executable(algorithm_test algorithm_test.cpp)
+target_link_libraries(algorithm_test ${Boost_LIBRARIES})
+
 find_program(
   CLANG_TIDY_EXE
   NAMES "clang-tidy"
@@ -49,6 +52,10 @@ if(CLANG_TIDY_EXE)
   )
   set_target_properties(
       vector_test PROPERTIES
+    CXX_CLANG_TIDY "${DO_CLANG_TIDY}"
+  )
+  set_target_properties(
+      algorithm_test PROPERTIES
     CXX_CLANG_TIDY "${DO_CLANG_TIDY}"
   )
 endif()
