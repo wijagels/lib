@@ -12,10 +12,10 @@
 #include <execution>
 #endif
 
-#define ONE_CONTAINER_ONE_FUNCTION(function)               \
-  template <typename Container, typename Func>             \
-  auto function(Container &&c, Func &&f) {                 \
-    return function(c.begin(), c.end(), forward<Func>(f)); \
+#define ONE_CONTAINER_ONE_FUNCTION(function)             \
+  template <typename Container, typename Func>           \
+  auto function(Container &&c, Func &&f) {               \
+    return function(begin(c), end(c), forward<Func>(f)); \
   }
 
 #if defined(__cpp_lib_parallel_algorithm) && \
@@ -25,7 +25,7 @@
             typename std::enable_if<                                        \
                 std::is_execution_policy_v<std::decay_t<ExecutionPolicy>>>> \
   auto function(ExecutionPolicy &&policy, Container &&c, Func &&f) {        \
-    return function(forward<ExecutionPolicy>(policy), c.begin(), c.end(),   \
+    return function(forward<ExecutionPolicy>(policy), begin(c), end(c),     \
                     forward<Func>(f));                                      \
   }
 #else
@@ -39,18 +39,17 @@
 #define ONE_CONTAINER_ONE_VALUE(function)      \
   template <typename Container, typename T>    \
   auto function(Container &&c, const T &val) { \
-    return function(c.begin(), c.end(), val);  \
+    return function(begin(c), end(c), val);    \
   }
 
 #if defined(__cpp_lib_parallel_algorithm) && \
     __cpp_lib_parallel_algorithm >= 201603
-#define ONE_CONTAINER_ONE_VALUE_EXEC_POLICY(function)                       \
-  template <typename ExecutionPolicy, typename Container, typename T,       \
-            typename std::enable_if<                                        \
-                std::is_execution_policy_v<std::decay_t<ExecutionPolicy>>>> \
-  auto function(ExecutionPolicy &&policy, Container &&c, const T &val) {    \
-    return function(forward<ExecutionPolicy>(policy), c.begin(), c.end(),   \
-                    val);                                                   \
+#define ONE_CONTAINER_ONE_VALUE_EXEC_POLICY(function)                         \
+  template <typename ExecutionPolicy, typename Container, typename T,         \
+            typename std::enable_if<                                          \
+                std::is_execution_policy_v<std::decay_t<ExecutionPolicy>>>>   \
+  auto function(ExecutionPolicy &&policy, Container &&c, const T &val) {      \
+    return function(forward<ExecutionPolicy>(policy), begin(c), end(c), val); \
   }
 #else
 #define ONE_CONTAINER_ONE_VALUE_EXEC_POLICY(function)
@@ -60,10 +59,10 @@
   ONE_CONTAINER_ONE_VALUE(function)                \
   ONE_CONTAINER_ONE_VALUE_EXEC_POLICY(function)
 
-#define TWO_CONTAINERS(function)                                 \
-  template <typename Container1, typename Container2>            \
-  auto function(Container1 &&c1, Container2 &&c2) {              \
-    return function(c1.begin(), c1.end(), c2.begin(), c2.end()); \
+#define TWO_CONTAINERS(function)                             \
+  template <typename Container1, typename Container2>        \
+  auto function(Container1 &&c1, Container2 &&c2) {          \
+    return function(begin(c1), end(c1), begin(c2), end(c2)); \
   }
 
 #if defined(__cpp_lib_parallel_algorithm) && \
@@ -74,7 +73,7 @@
             typename std::enable_if<                                          \
                 std::is_execution_policy_v<std::decay_t<ExecutionPolicy>>>>   \
   auto function(ExecutionPolicy &&policy, Container1 &&c1, Container2 &&c2) { \
-    return function(c1.begin(), c1.end(), c2.begin(), c2.end());              \
+    return function(begin(c1), end(c1), begin(c2), end(c2));                  \
   }
 #else
 #define TWO_CONTAINERS_EXEC_POLICY(function)
@@ -84,11 +83,10 @@
   TWO_CONTAINERS(function)                \
   TWO_CONTAINERS_EXEC_POLICY(function)
 
-#define TWO_CONTAINERS_ONE_FUNCTION(function)                        \
-  template <typename Container1, typename Container2, typename Func> \
-  auto function(Container1 &&c1, Container2 &&c2, Func &&f) {        \
-    return function(c1.begin(), c1.end(), c2.begin(), c2.end(),      \
-                    forward<Func>(f));                               \
+#define TWO_CONTAINERS_ONE_FUNCTION(function)                                  \
+  template <typename Container1, typename Container2, typename Func>           \
+  auto function(Container1 &&c1, Container2 &&c2, Func &&f) {                  \
+    return function(begin(c1), end(c1), begin(c2), end(c2), forward<Func>(f)); \
   }
 
 #if defined(__cpp_lib_parallel_algorithm) && \
@@ -100,8 +98,8 @@
                 std::is_execution_policy_v<std::decay_t<ExecutionPolicy>>>> \
   auto function(ExecutionPolicy &&policy, Container1 &&c1, Container2 &&c2, \
                 Func &&f) {                                                 \
-    return function(forward<ExecutionPolicy>(policy), c1.begin(), c1.end(), \
-                    c2.begin(), c2.end(), forward<Func>(f));                \
+    return function(forward<ExecutionPolicy>(policy), begin(c1), end(c1),   \
+                    begin(c2), end(c2), forward<Func>(f));                  \
   }
 #else
 #define TWO_CONTAINERS_ONE_FUNCTION_EXEC_POLICY(function)
@@ -111,10 +109,10 @@
   TWO_CONTAINERS_ONE_FUNCTION(function)                \
   TWO_CONTAINERS_ONE_FUNCTION_EXEC_POLICY(function)
 
-#define TWO_CONTAINERS_ONE_VALUE(function)                                     \
-  template <typename Container1, typename Container2, typename T>              \
-  auto function(Container1 &&c1, Container2 &&c2, T &&val) {                   \
-    return function(c1.begin(), c1.end(), c2.begin(), c2.end(), const T &val); \
+#define TWO_CONTAINERS_ONE_VALUE(function)                                 \
+  template <typename Container1, typename Container2, typename T>          \
+  auto function(Container1 &&c1, Container2 &&c2, T &&val) {               \
+    return function(begin(c1), end(c1), begin(c2), end(c2), const T &val); \
   }
 
 #if defined(__cpp_lib_parallel_algorithm) && \
@@ -126,8 +124,8 @@
                 std::is_execution_policy_v<std::decay_t<ExecutionPolicy>>>> \
   auto function(ExecutionPolicy &&policy, Container1 &&c1, Container2 &&c2, \
                 const T &val) {                                             \
-    return function(forward<ExecutionPolicy>(policy), c1.begin(), c1.end(), \
-                    c2.begin(), c2.end(), val);                             \
+    return function(forward<ExecutionPolicy>(policy), begin(c1), end(c1),   \
+                    begin(c2), end(c2), val);                               \
   }
 #else
 #define TWO_CONTAINERS_ONE_VALUE_EXEC_POLICY(function)
