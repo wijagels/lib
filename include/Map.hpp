@@ -9,14 +9,6 @@
 #include <utility>
 
 namespace wijagels {
-namespace detail {
-template <class Iterator, class NodeType>
-struct InsertReturnType {
-  Iterator position;
-  bool inserted;
-  NodeType node;
-};
-}  // namespace detail
 template <class Key, class T, class Compare = std::less<Key>,
           class Allocator = std::allocator<std::pair<const Key, T>>>
 class map {
@@ -65,8 +57,33 @@ class map {
   using ReverseIterator = reverse_iterator;
   using const_reverse_iterator =
       typename container_type::const_reverse_iterator;
-  using node_type = typename container_type::node_type;
+  // using node_type = typename container_type::node_type;
+  class node_type;
   using insert_return_type = detail::InsertReturnType<iterator, node_type>;
+
+  struct node_type : public container_type::node_type {
+    using key_type = const Key;
+    using mapped_type = T;
+
+    node_type() = default;
+    node_type(node_type &&nh) = default;
+
+    /*
+     * Conversion constructor from base class
+     */
+    node_type(typename container_type::node_type &&nh)
+        : container_type::node_type{std::move(nh)} {}
+
+    node_type &operator=(node_type &&nh) = default;
+
+    key_type &key() const {
+      return container_type::node_type::d_node_p->d_data.first;
+    }
+
+    mapped_type &mapped() const {
+      return container_type::node_type::d_node_p->d_data.second;
+    }
+  };
 
   /* Member functions */
   /* Constructors */
@@ -234,12 +251,21 @@ class map {
     for (auto e : ilist) insert(std::move(e));
   }
 
-  insert_return_type insert(node_type &&nh);
+  insert_return_type insert(node_type &&nh) {
+    auto container_return = d_container.insert(std::move(nh));
 
-  iterator insert(const_iterator hint, node_type &&nh);
+    insert_return_type ret{container_return.position, container_return.inserted, std::move(container_return.node)};
+    return ret;
+  }
+
+  iterator insert(const_iterator hint, node_type &&nh) {
+    // Implicit upcast
+    return d_container.insert(hint, std::move(nh));
+  }
 
   template <class... Args>
   std::pair<iterator, bool> emplace(Args &&... args) {
+    // Implicit upcast
     return d_container.emplace(std::forward<Args>(args)...);
   }
 
@@ -292,6 +318,7 @@ class map {
   node_type extract(const_iterator position) {
     return d_container.extract(position);
   }
+
   node_type extract(const key_type &x) {
     auto it = d_container.find(x);
     if (it != d_container.end()) return extract(it);

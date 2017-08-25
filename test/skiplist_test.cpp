@@ -139,8 +139,9 @@ BOOST_AUTO_TEST_CASE(extract_test) {
   for (auto e : nums) {
     s->insert(e);
   }
-  auto sp = s->extract(s->begin());
-  delete s;
+  auto nh = s->extract(s->begin());
+  s->insert(std::move(nh));
+  BOOST_REQUIRE_EQUAL(1, *s->begin());
 }
 
 BOOST_AUTO_TEST_CASE(find_test) {
@@ -223,7 +224,7 @@ BOOST_AUTO_TEST_CASE(move_test) {
   skiplist<int> list{g_rand_list};
   skiplist<int> nls{1};
   BOOST_TEST_MESSAGE("Running move_test, if this takes long something's wrong");
-  for (int i = 0; i < 1e7; i++) {
+  for (int i = 0; i < 1e4; i++) {
     nls = std::move(list);
     list = std::move(nls);
   }
@@ -232,3 +233,4 @@ BOOST_AUTO_TEST_CASE(move_test) {
       std::equal(list.begin(), list.end(), result.begin(), result.end()));
   BOOST_TEST_MESSAGE("Passed move_test");
 }
+

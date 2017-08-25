@@ -49,3 +49,26 @@ BOOST_AUTO_TEST_CASE(iteration_test) {
   BOOST_REQUIRE(
       std::equal(m.crbegin(), m.crend(), result.crbegin(), result.crend()));
 }
+
+BOOST_AUTO_TEST_CASE(extract_test) {
+  //  Roundabout way of figuring out the type
+  using node_type = decltype(std::declval<map<int, int>>().extract(
+      std::declval<map<int, int>>().begin()));
+  node_type nh1, nh2;
+  {
+    map<int, int> m{{2, 4}, {6, 8}};
+    nh1 = m.extract(m.begin());
+    nh2 = m.extract(m.begin());
+  }  // m goes out of scope
+  BOOST_REQUIRE_EQUAL(nh1.key(), 2);
+  BOOST_REQUIRE_EQUAL(nh1.mapped(), 4);
+  BOOST_REQUIRE_EQUAL(nh2.key(), 6);
+  BOOST_REQUIRE_EQUAL(nh2.mapped(), 8);
+  map<int, int> m{};
+  m.insert(std::move(nh1));
+  m.insert(m.end(), std::move(nh2));
+  BOOST_REQUIRE_EQUAL(m.begin()->first, 2);
+  BOOST_REQUIRE_EQUAL(m.begin()->second, 4);
+  BOOST_REQUIRE_EQUAL((++m.begin())->first, 6);
+  BOOST_REQUIRE_EQUAL((++m.begin())->second, 8);
+}

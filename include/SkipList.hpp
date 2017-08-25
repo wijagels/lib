@@ -11,6 +11,15 @@
 #include <vector>
 
 namespace wijagels {
+namespace detail {
+template <class Iterator, class NodeType>
+struct InsertReturnType {
+  Iterator position;
+  bool inserted;
+  NodeType node;
+};
+}  // namespace detail
+
 static std::geometric_distribution<size_t> distrib;
 static std::random_device rd;
 
@@ -25,8 +34,7 @@ class skiplist {
                    std::vector<skip_node_base *> nexts) noexcept
         : d_prevs{prevs}, d_nexts{nexts} {}
 
-    skip_node_base(const skip_node_base &other) noexcept
-        : d_prevs{other.d_prevs}, d_nexts{other.d_nexts} {}
+    skip_node_base(const skip_node_base &other) = default;
 
     skip_node_base(skip_node_base &&other) noexcept
         : d_prevs{std::move(other.d_prevs)}, d_nexts{std::move(other.d_nexts)} {
@@ -36,12 +44,7 @@ class skiplist {
 
     ~skip_node_base() = default;
 
-    skip_node_base &operator=(const skip_node_base &other) noexcept {
-      if (&other == this) return *this;
-      d_prevs = other.d_prevs;
-      d_nexts = other.d_nexts;
-      return *this;
-    }
+    skip_node_base &operator=(const skip_node_base &other) = default;
 
     skip_node_base &operator=(skip_node_base &&other) noexcept {
       if (&other == this) return *this;
@@ -52,7 +55,7 @@ class skiplist {
       return *this;
     }
 
-    inline size_t links() const noexcept { return d_prevs.size(); }
+    size_t links() const noexcept { return d_prevs.size(); }
 
     inline void expand(size_t size) {
       if (links() < size) {
@@ -62,14 +65,14 @@ class skiplist {
     }
 
     friend void swap(skip_node_base &lhs, skip_node_base &rhs) noexcept {
-      std::swap(lhs.d_prevs, rhs.d_prevs);
-      std::swap(lhs.d_nexts, rhs.d_nexts);
+      std::swap(std::move(lhs.d_prevs), std::move(rhs.d_prevs));
+      std::swap(std::move(lhs.d_nexts), std::move(rhs.d_nexts));
     }
 
     std::vector<skip_node_base *> d_prevs, d_nexts;
   };
 
-  struct skip_node : skip_node_base {
+  struct skip_node : public skip_node_base {
     skip_node(std::vector<skip_node_base *> prevs,
               std::vector<skip_node_base *> nexts, const T &data)
         : skip_node_base{prevs, nexts}, d_data{data} {}
@@ -273,21 +276,97 @@ class skiplist {
   using reverse_iterator = std::reverse_iterator<iterator>;
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
   using node_ptr = skip_node *;
-  using node_type = std::shared_ptr<skip_node>;
   using insert_type = std::pair<iterator, bool>;
   using node_allocator_type = typename std::allocator_traits<
       allocator_type>::template rebind_alloc<skip_node>;
   using node_alloc_traits = typename std::allocator_traits<node_allocator_type>;
+  class node_type;
+  using insert_return_type = detail::InsertReturnType<iterator, node_type>;
+
+  class node_type {
+   public:
+    using allocator_type = node_allocator_type;
+
+   protected:
+    friend skiplist;
+    node_ptr d_node_p;
+    allocator_type d_alloc;
+
+    inline void destroy_() {
+      if (d_node_p) {
+        std::allocator_traits<allocator_type>::destroy(d_alloc, d_node_p);
+        std::allocator_traits<allocator_type>::deallocate(d_alloc, d_node_p, 1);
+      }
+    }
+
+    /*
+     * Releases ownership over the node pointer and returns an owning pointer
+     */
+    node_ptr release_() {
+      auto ptr = d_node_p;
+      d_node_p = nullptr;
+      return ptr;
+    }
+
+   public:
+    constexpr node_type() : node_type{nullptr} {}
+
+    node_type(node_ptr ptr, allocator_type alloc = allocator_type{})
+        : d_node_p{ptr}, d_alloc{std::move(alloc)} {}
+
+    node_type(const node_type &) = delete;
+
+    node_type(node_type &&other)
+        : node_type{other.d_node_p, std::move(other.d_alloc)} {
+      other.d_node_p = nullptr;
+    }
+
+    ~node_type() { destroy_(); }
+
+    node_type &operator=(const node_type &) = delete;
+
+    node_type &operator=(node_type &&other) {
+      destroy_();
+      d_node_p = other.d_node_p;
+      other.d_node_p = nullptr;
+      if (typename std::allocator_traits<
+              allocator_type>::propagate_on_container_move_assignment())
+        d_alloc = std::move(other.d_alloc);
+      return *this;
+    }
+
+    bool empty() const noexcept { return d_node_p == nullptr; }
+
+    explicit operator bool() const noexcept { return !empty(); }
+
+    allocator_type get_allocator() const noexcept { return d_alloc; }
+
+    void swap(node_type &nh) noexcept(
+        std::allocator_traits<
+            allocator_type>::propogate_on_container_swap::value ||
+        std::allocator_traits<allocator_type>::is_always_equal::value) {
+      if (!(empty() && nh.empty())) {  // Swapping two empties is a no-op
+        if (std::allocator_traits<
+                allocator_type>::propogate_on_container_swap::value) {
+          std::swap(d_alloc, nh.d_alloc);
+        }
+        std::swap(d_node_p, nh.d_node_p);
+      }
+    }
+
+    friend void swap(node_type &x, node_type &y) noexcept { x.swap(y); }
+  };
 
  private:
-  inline void link_(size_t level, skip_node_base *first, skip_node_base *last) {
+  constexpr void link_(size_t level, skip_node_base *first,
+                       skip_node_base *last) {
     first->d_nexts[level] = last;
     last->d_prevs[level] = first;
   }
 
   template <typename... Args>
-  inline void link_(size_t level, skip_node_base *first, skip_node_base *second,
-                    Args... rest) {
+  constexpr void link_(size_t level, skip_node_base *first,
+                       skip_node_base *second, Args... rest) {
     link_(level, first, second);
     link_(level, second, rest...);
   }
@@ -394,7 +473,7 @@ class skiplist {
   skiplist() : skiplist{value_compare{}} {}
 
   explicit skiplist(const value_compare &cmp,
-                    const Allocator &alloc = Allocator{})
+                    const allocator_type &alloc = allocator_type{})
       : d_comp{cmp}, d_alloc{alloc}, d_head{1} {}
 
   skiplist(const skiplist &other)
@@ -481,7 +560,6 @@ class skiplist {
     /*
      * Don't bother fixing links if we're destroying the entire list
      */
-    using std::allocator_traits;
     if (begin() != end()) {
       auto last = begin();
       for (auto it = ++begin(); it != end(); it++) {
@@ -497,7 +575,6 @@ class skiplist {
   insert_type insert(const_reference data) { return insert(end(), data); }
 
   insert_type insert(const_iterator hint, const_reference data) {
-    using std::allocator_traits;
     auto pos = find_pos_(iterator{hint}, data);
     if (!pos.second) return pos;
 
@@ -513,7 +590,6 @@ class skiplist {
   }
 
   insert_type insert(const_iterator hint, value_type &&data) {
-    using std::allocator_traits;
     auto pos = find_pos_(iterator{hint}, data);
     if (!pos.second) return pos;
 
@@ -522,6 +598,39 @@ class skiplist {
     node_alloc_traits::construct(d_node_alloc, node, lvl, std::move(data));
     insert_node_(pos.first, node);
     return {iterator{node}, true};
+  }
+
+  insert_return_type insert(node_type &&nh) {
+    insert_return_type ret{end(), false, {}};
+    if (!nh) {
+      return ret;
+    }
+    auto pos = find_pos_(end(), nh.d_node_p->d_data);
+    if (!pos.second) {
+      printf("Pos exists\n");
+      ret.position = pos.first;
+      return ret;
+    }
+    size_t lvl = distrib(d_gen) + 1;
+    auto node = nh.release_();
+    node->expand(lvl);
+    insert_node_(pos.first, node);
+    ret.inserted = true;
+    ret.position = iterator{node};
+    return ret;
+  }
+
+  iterator insert(const_iterator hint, node_type &&nh) {
+    if (!nh) return end();
+    size_t lvl = distrib(d_gen) + 1;
+    auto pos = find_pos_(iterator{hint}, nh.d_node_p->d_data);
+    if (!pos.second) {
+      return pos.first;
+    }
+    auto node = nh.release_();
+    node->expand(lvl);
+    insert_node_(pos.first, node);
+    return iterator{node};
   }
 
   template <typename... Args>
@@ -550,7 +659,6 @@ class skiplist {
   }
 
   iterator erase(const iterator &pos) {
-    using std::allocator_traits;
     iterator ret = iterator{pos.d_node_p->d_nexts[0]};
     auto node = pos.d_node_p;
     unlink_node_(node);
@@ -578,12 +686,7 @@ class skiplist {
   node_type extract(const const_iterator &pos) {
     auto node = static_cast<node_ptr>(pos.un_const().d_node_p);
     unlink_node_(node);
-    node_allocator_type alloc = d_node_alloc;
-    auto deleter = [alloc](node_ptr ptr) mutable {
-      node_alloc_traits::destroy(alloc, ptr);
-      node_alloc_traits::deallocate(alloc, ptr, 1);
-    };
-    return node_type{node, deleter};
+    return node_type{node, d_node_alloc};
   }
 
   node_type extract(const_reference data) {

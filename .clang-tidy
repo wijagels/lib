@@ -1,5 +1,5 @@
 ---
-Checks: '-*,performance-*,readability-*,clang-analyzer-alpha.core*,clang-analyzer-alpha.security*,clang-analyzer-alpha.unix.cstring*,clang-analyzer-core.uninitialized*,clang-analyzer-cplusplus.*,clang-analyzer-nullability*,clang-analyzer-unix*,cppcoreguidelines*,modernize-use-*,modernize-*,-readability-implicit-bool-cast,-readability-else-after-return,-readability-named-parameter,-readability-around-braces,-readability-braces-around-statements,-cppcoreguidelines-pro-type-vararg'
+Checks: '-*,performance-*,readability-*,clang-analyzer-alpha.core*,clang-analyzer-alpha.security*,clang-analyzer-alpha.unix.cstring*,clang-analyzer-core.uninitialized*,clang-analyzer-cplusplus.*,clang-analyzer-nullability*,clang-analyzer-unix*,cppcoreguidelines*,modernize-use-*,modernize-*,-readability-implicit-bool-cast,-readability-else-after-return,-readability-named-parameter,-readability-around-braces,-readability-braces-around-statements,-cppcoreguidelines-pro-type-vararg,-cppcoreguidelines-pro-bounds-array-to-pointer-decay'
 CheckOptions:
   - key:             modernize-loop-convert.NamingStyle
     value:           lower_case
