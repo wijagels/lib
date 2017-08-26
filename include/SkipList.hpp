@@ -132,7 +132,7 @@ class skiplist {
     }
 
     iterator operator++(int) {
-      iterator ret = iterator{*this};
+      auto ret = iterator{*this};
       d_node_p = d_node_p->d_nexts[d_level];
       return ret;
     }
@@ -143,7 +143,7 @@ class skiplist {
     }
 
     iterator operator--(int) {
-      iterator ret = iterator{*this};
+      auto ret = iterator{*this};
       d_node_p = d_node_p->d_prevs[d_level];
       return ret;
     }
@@ -208,7 +208,7 @@ class skiplist {
     }
 
     const_iterator operator++(int) {
-      const_iterator ret = const_iterator{*this};
+      auto ret = const_iterator{*this};
       d_node_p = d_node_p->d_nexts[d_level];
       return ret;
     }
@@ -219,7 +219,7 @@ class skiplist {
     }
 
     const_iterator operator--(int) {
-      const_iterator ret = const_iterator{*this};
+      auto ret = const_iterator{*this};
       d_node_p = d_node_p->d_prevs[d_level];
       return ret;
     }
@@ -498,7 +498,7 @@ class skiplist {
            const Allocator &alloc = Allocator())
       : skiplist{cmp, alloc} {
     for (auto &&e : init) {
-      emplace(e);
+      emplace(std::move(e));
     }
   }
 
@@ -507,7 +507,7 @@ class skiplist {
   skiplist &operator=(const skiplist &other) {
     if (this == &other) return *this;
     clear();
-    for (auto e : other) {
+    for (auto &e : other) {
       insert(e);
     }
     return *this;
@@ -639,20 +639,11 @@ class skiplist {
 
   template <typename... Args>
   insert_type emplace(Args &&... args) {
-    size_t level = d_head.links() - 1;
-    auto pos = end();
-    pos.d_level = level;
-    if (level == 0) pos = begin();
-    return emplace_hint(pos, std::forward<Args>(args)...);
-  }
-
-  template <typename... Args>
-  insert_type emplace_hint(const iterator &hint, Args &&... args) {
     size_t lvl = distrib(d_gen) + 1;
     node_ptr node = node_alloc_traits::allocate(d_node_alloc, 1);
     node_alloc_traits::construct(d_node_alloc, node, lvl,
                                  std::forward<Args>(args)...);
-    auto pos = find_pos_(hint, node->d_data);
+    auto pos = find_pos_(end(), node->d_data);
     if (!pos.second) {
       node_alloc_traits::destroy(d_node_alloc, node);
       node_alloc_traits::deallocate(d_node_alloc, node, 1);
@@ -662,8 +653,24 @@ class skiplist {
     return {iterator{node}, true};
   }
 
+  template <typename... Args>
+  iterator emplace_hint(const_iterator hint, Args &&... args) {
+    size_t lvl = distrib(d_gen) + 1;
+    node_ptr node = node_alloc_traits::allocate(d_node_alloc, 1);
+    node_alloc_traits::construct(d_node_alloc, node, lvl,
+                                 std::forward<Args>(args)...);
+    auto pos = find_pos_(iterator{hint}, node->d_data);
+    if (!pos.second) {
+      node_alloc_traits::destroy(d_node_alloc, node);
+      node_alloc_traits::deallocate(d_node_alloc, node, 1);
+      return pos.first;
+    }
+    insert_node_(pos.first, node);
+    return iterator{node};
+  }
+
   iterator erase(const iterator &pos) {
-    iterator ret = iterator{pos.d_node_p->d_nexts[0]};
+    auto ret = iterator{pos.d_node_p->d_nexts[0]};
     auto node = pos.d_node_p;
     unlink_node_(node);
     destroy_node_(node);

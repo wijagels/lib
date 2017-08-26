@@ -58,7 +58,7 @@ class map {
   using const_reverse_iterator =
       typename container_type::const_reverse_iterator;
   // using node_type = typename container_type::node_type;
-  class node_type;
+  struct node_type;
   using insert_return_type = detail::InsertReturnType<iterator, node_type>;
 
   struct node_type : public container_type::node_type {
@@ -266,28 +266,39 @@ class map {
 
   template <class M>
   std::pair<iterator, bool> insert_or_assign(const key_type &k, M &&obj) {
-    insert_or_assign(d_container.end(), k, std::forward<M>(obj));
+    auto iter = find(k);
+    if (iter == end()) {
+      return emplace(k, std::forward<M>(obj));
+    }
+    iter->second = std::forward<M>(obj);
+    return {iter, false};
   }
 
   template <class M>
   std::pair<iterator, bool> insert_or_assign(key_type &&k, M &&obj) {
-    insert_or_assign(d_container.end(), std::move(k), std::forward<M>(obj));
+    auto iter = find(k);
+    if (iter == end()) {
+      return emplace(std::move(k), std::forward<M>(obj));
+    }
+    iter->second = std::forward<M>(obj);
+    return {iter, false};
   }
 
   template <class M>
   iterator insert_or_assign(const_iterator hint, const key_type &k, M &&obj) {
     auto iter = find(k);
     if (iter == end()) {
-      return emplace(k, std::forward<M>(obj));
+      return emplace_hint(hint, k, std::forward<M>(obj));
     }
     iter->second = std::forward<M>(obj);
+    return iter;
   }
 
   template <class M>
   iterator insert_or_assign(const_iterator hint, key_type &&k, M &&obj) {
     auto iter = find(k);
     if (iter == end()) {
-      return emplace_hint(hint, std::forward(k), std::forward<M>(obj));
+      return emplace_hint(hint, std::move(k), std::forward<M>(obj));
     }
     iter->second = std::forward<M>(obj);
     return iter;
@@ -307,6 +318,7 @@ class map {
   std::pair<iterator, bool> try_emplace(const key_type &k, Args &&... args) {
     auto it = d_container.find(k);
     if (it != d_container.end()) return {it, false};
+    // TODO: optimize finding the spot to put the new element
     return emplace(std::piecewise_construct, std::forward_as_tuple(k),
                    std::forward_as_tuple(std::forward<Args>(args)...));
   }
@@ -315,6 +327,7 @@ class map {
   std::pair<iterator, bool> try_emplace(key_type &&k, Args &&... args) {
     auto it = d_container.find(k);
     if (it != d_container.end()) return {it, false};
+    // TODO: optimize finding the spot to put the new element
     return emplace(std::piecewise_construct,
                    std::forward_as_tuple(std::move(k)),
                    std::forward_as_tuple(std::forward<Args>(args)...));
@@ -325,6 +338,7 @@ class map {
                        Args &&... args) {
     auto it = d_container.find(k);
     if (it != d_container.end()) return it;
+    // TODO: optimize finding the spot to put the new element
     return emplace_hint(hint, std::piecewise_construct,
                         std::forward_as_tuple(k),
                         std::forward_as_tuple(std::forward<Args>(args)...));
@@ -334,6 +348,7 @@ class map {
   iterator try_emplace(const_iterator hint, key_type &&k, Args &&... args) {
     auto it = d_container.find(k);
     if (it != d_container.end()) return it;
+    // TODO: optimize finding the spot to put the new element
     return emplace_hint(hint, std::piecewise_construct,
                         std::forward_as_tuple(std::move(k)),
                         std::forward_as_tuple(std::forward<Args>(args)...));

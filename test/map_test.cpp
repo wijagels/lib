@@ -80,3 +80,23 @@ BOOST_AUTO_TEST_CASE(try_emplace_test) {
   auto r = m.try_emplace(1, 5);
   BOOST_REQUIRE_EQUAL(r.second, false);
 }
+
+BOOST_AUTO_TEST_CASE(insert_or_assign_test) {
+  map<int, int> m{{8, 9}};
+  auto r = m.insert_or_assign(1, 2);
+  BOOST_REQUIRE_EQUAL(r.second, true);
+  BOOST_REQUIRE_EQUAL(r.first->first, 1);
+  BOOST_REQUIRE_EQUAL(r.first->second, 2);
+  BOOST_REQUIRE_EQUAL(m.find(1)->first, 1);
+  BOOST_REQUIRE_EQUAL(m.find(1)->second, 2);
+  r = m.insert_or_assign(1, 3);
+  BOOST_REQUIRE_EQUAL(r.second, false);
+  BOOST_REQUIRE_EQUAL(r.first->first, 1);
+  BOOST_REQUIRE_EQUAL(r.first->second, 3);
+  BOOST_REQUIRE_EQUAL(m.find(1)->first, 1);
+  BOOST_REQUIRE_EQUAL(m.find(1)->second, 3);
+
+  m.insert_or_assign(m.find(1), 1, 4);
+  BOOST_REQUIRE_EQUAL(m.find(1)->first, 1);
+  BOOST_REQUIRE_EQUAL(m.find(1)->second, 4);
+}
