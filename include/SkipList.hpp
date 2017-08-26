@@ -464,6 +464,22 @@ class skiplist {
     }
   }
 
+  template <typename... Args>
+  auto allocate_node_(Args &&... args) {
+    auto node = node_alloc_traits::allocate(d_node_alloc, 1);
+    if (!node) {
+      throw std::bad_alloc{};
+    }
+    try {
+      node_alloc_traits::construct(d_node_alloc, node,
+                                   std::forward<Args>(args)...);
+    } catch (...) {
+      node_alloc_traits::deallocate(d_node_alloc, node, 1);
+      throw;
+    }
+    return node;
+  }
+
   void destroy_node_(skip_node_base *node) {
     destroy_node_(static_cast<node_ptr>(node));
   }
@@ -583,8 +599,7 @@ class skiplist {
     if (!pos.second) return pos;
 
     size_t lvl = distrib(d_gen) + 1;
-    node_ptr node = node_alloc_traits::allocate(d_node_alloc, 1);
-    node_alloc_traits::construct(d_node_alloc, node, lvl, data);
+    node_ptr node = allocate_node_(lvl, data);
     insert_node_(pos.first, node);
     return {iterator{node}, true};
   }
@@ -598,8 +613,7 @@ class skiplist {
     if (!pos.second) return pos;
 
     size_t lvl = distrib(d_gen) + 1;
-    node_ptr node = node_alloc_traits::allocate(d_node_alloc, 1);
-    node_alloc_traits::construct(d_node_alloc, node, lvl, std::move(data));
+    node_ptr node = allocate_node_(lvl, std::move(data));
     insert_node_(pos.first, node);
     return {iterator{node}, true};
   }
@@ -639,32 +653,26 @@ class skiplist {
 
   template <typename... Args>
   insert_type emplace(Args &&... args) {
-    size_t lvl = distrib(d_gen) + 1;
-    node_ptr node = node_alloc_traits::allocate(d_node_alloc, 1);
-    node_alloc_traits::construct(d_node_alloc, node, lvl,
-                                 std::forward<Args>(args)...);
-    auto pos = find_pos_(end(), node->d_data);
+    auto data = value_type{std::forward<Args>(args)...};
+    auto pos = find_pos_(end(), data);
     if (!pos.second) {
-      node_alloc_traits::destroy(d_node_alloc, node);
-      node_alloc_traits::deallocate(d_node_alloc, node, 1);
       return pos;
     }
+    size_t lvl = distrib(d_gen) + 1;
+    node_ptr node = allocate_node_(lvl, std::move(data));
     insert_node_(pos.first, node);
     return {iterator{node}, true};
   }
 
   template <typename... Args>
   iterator emplace_hint(const_iterator hint, Args &&... args) {
-    size_t lvl = distrib(d_gen) + 1;
-    node_ptr node = node_alloc_traits::allocate(d_node_alloc, 1);
-    node_alloc_traits::construct(d_node_alloc, node, lvl,
-                                 std::forward<Args>(args)...);
-    auto pos = find_pos_(iterator{hint}, node->d_data);
+    auto data = value_type{std::forward<Args>(args)...};
+    auto pos = find_pos_(iterator{hint}, data);
     if (!pos.second) {
-      node_alloc_traits::destroy(d_node_alloc, node);
-      node_alloc_traits::deallocate(d_node_alloc, node, 1);
       return pos.first;
     }
+    size_t lvl = distrib(d_gen) + 1;
+    node_ptr node = allocate_node_(lvl, std::move(data));
     insert_node_(pos.first, node);
     return iterator{node};
   }

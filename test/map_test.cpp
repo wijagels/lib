@@ -13,20 +13,29 @@ BOOST_AUTO_TEST_CASE(construct_test) { map<int, int> m{}; }
 
 BOOST_AUTO_TEST_CASE(at_test) {
   map<int, int> m{};
+  BOOST_REQUIRE_EXCEPTION(m.at(1), std::out_of_range,
+                          [](std::out_of_range) { return true; });
   m.insert({1, 2});
   BOOST_REQUIRE_EQUAL(2, m.at(1));
 }
 
-BOOST_AUTO_TEST_CASE(index_op_test) {
-  map<int, int> m{};
+BOOST_AUTO_TEST_CASE(index_test) {
+  map<int, int> m;
   // Call with const&
   int i = 3;
   BOOST_REQUIRE_EQUAL(int{}, m[i]);
 
   // Call with temporary
   BOOST_REQUIRE_EQUAL(int{}, m[4]);
-  m[4]++;
+  ++m[4];
   BOOST_REQUIRE_EQUAL(int{} + 1, m[4]);
+}
+
+BOOST_AUTO_TEST_CASE(clear_test) {
+  map<int, int> m{{1, 2}};
+  BOOST_REQUIRE(!m.empty());
+  m.clear();
+  BOOST_REQUIRE(m.empty());
 }
 
 BOOST_AUTO_TEST_CASE(iteration_test) {
