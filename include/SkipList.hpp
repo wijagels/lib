@@ -10,6 +10,10 @@
 #include <utility>
 #include <vector>
 
+#ifndef DNDEBUG
+#include <iostream>
+#endif
+
 namespace wijagels {
 namespace detail {
 template <class Iterator, class NodeType>
@@ -85,7 +89,7 @@ class skiplist {
 
     template <typename... Args>
     explicit skip_node(size_t level, Args &&... args)
-        : skip_node_base{level}, d_data{args...} {}
+        : skip_node_base{level}, d_data{std::forward<Args>(args)...} {}
 
     friend void swap(skip_node &lhs, skip_node &rhs) noexcept {
       std::swap(lhs.d_data, rhs.d_data);
@@ -731,16 +735,19 @@ class skiplist {
   /* Observers */
   value_compare value_comp() const { return d_comp; }
 
-  /* Utilities */
-  /* Not for normal use */
+#ifdef DNDEBUG
+  /*
+   * Utilities
+   * Not for normal use
+   */
   void print_state() {
     for (size_t i = 0; i < d_head.links(); i++) {
       auto iter = const_iterator{d_head.d_nexts[i], i};
       while (iter != cend()) {
-        printf("%d, ", *iter);
+        std::cout << *iter << ", ";
         ++iter;
       }
-      printf("END\n");
+      std::cout << "END\n";
     }
   }
 
@@ -754,6 +761,10 @@ class skiplist {
       }
     }
   }
+#else
+  void print_state() {}
+  void verify_integrity() {}
+#endif
 
  private:
   value_compare d_comp;

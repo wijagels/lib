@@ -72,3 +72,11 @@ BOOST_AUTO_TEST_CASE(extract_test) {
   BOOST_REQUIRE_EQUAL((++m.begin())->first, 6);
   BOOST_REQUIRE_EQUAL((++m.begin())->second, 8);
 }
+
+BOOST_AUTO_TEST_CASE(try_emplace_test) {
+  map<int, int> m{{2, 4}, {6, 8}};
+  m.try_emplace(1, 3);
+  BOOST_REQUIRE_EQUAL(m[1], 3);
+  auto r = m.try_emplace(1, 5);
+  BOOST_REQUIRE_EQUAL(r.second, false);
+}

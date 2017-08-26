@@ -254,7 +254,8 @@ class map {
   insert_return_type insert(node_type &&nh) {
     auto container_return = d_container.insert(std::move(nh));
 
-    insert_return_type ret{container_return.position, container_return.inserted, std::move(container_return.node)};
+    insert_return_type ret{container_return.position, container_return.inserted,
+                           std::move(container_return.node)};
     return ret;
   }
 
@@ -263,27 +264,67 @@ class map {
     return d_container.insert(hint, std::move(nh));
   }
 
+  template <class M>
+  std::pair<iterator, bool> insert_or_assign(const key_type &k, M &&obj) {
+    insert_or_assign(d_container.end(), k, std::forward<M>(obj));
+  }
+
+  template <class M>
+  std::pair<iterator, bool> insert_or_assign(key_type &&k, M &&obj) {
+    insert_or_assign(d_container.end(), std::move(k), std::forward<M>(obj));
+  }
+
+  template <class M>
+  iterator insert_or_assign(const_iterator hint, const key_type &k, M &&obj) {
+    auto iter = find(k);
+    if (iter == end()) {
+      return emplace(k, std::forward<M>(obj));
+    }
+    iter->second = std::forward<M>(obj);
+  }
+
+  template <class M>
+  iterator insert_or_assign(const_iterator hint, key_type &&k, M &&obj) {
+    auto iter = find(k);
+    if (iter == end()) {
+      return emplace_hint(hint, std::forward(k), std::forward<M>(obj));
+    }
+    iter->second = std::forward<M>(obj);
+    return iter;
+  }
+
   template <class... Args>
   std::pair<iterator, bool> emplace(Args &&... args) {
-    // Implicit upcast
     return d_container.emplace(std::forward<Args>(args)...);
   }
 
   template <class... Args>
+  iterator emplace_hint(const_iterator hint, Args &&... args) {
+    return d_container.emplace_hint(hint, std::forward<Args>(args)...);
+  }
+
+  template <class... Args>
   std::pair<iterator, bool> try_emplace(const key_type &k, Args &&... args) {
-    try_emplace(end(), k, std::forward<Args>(args)...);
+    auto it = d_container.find(k);
+    if (it != d_container.end()) return {it, false};
+    return emplace(std::piecewise_construct, std::forward_as_tuple(k),
+                   std::forward_as_tuple(std::forward<Args>(args)...));
   }
 
   template <class... Args>
   std::pair<iterator, bool> try_emplace(key_type &&k, Args &&... args) {
-    try_emplace(end(), std::move(k), std::forward<Args>(args)...);
+    auto it = d_container.find(k);
+    if (it != d_container.end()) return {it, false};
+    return emplace(std::piecewise_construct,
+                   std::forward_as_tuple(std::move(k)),
+                   std::forward_as_tuple(std::forward<Args>(args)...));
   }
 
   template <class... Args>
   iterator try_emplace(const_iterator hint, const key_type &k,
                        Args &&... args) {
     auto it = d_container.find(k);
-    if (it != d_container.end()) return {it, false};
+    if (it != d_container.end()) return it;
     return emplace_hint(hint, std::piecewise_construct,
                         std::forward_as_tuple(k),
                         std::forward_as_tuple(std::forward<Args>(args)...));
@@ -292,7 +333,7 @@ class map {
   template <class... Args>
   iterator try_emplace(const_iterator hint, key_type &&k, Args &&... args) {
     auto it = d_container.find(k);
-    if (it != d_container.end()) return {it, false};
+    if (it != d_container.end()) return it;
     return emplace_hint(hint, std::piecewise_construct,
                         std::forward_as_tuple(std::move(k)),
                         std::forward_as_tuple(std::forward<Args>(args)...));
