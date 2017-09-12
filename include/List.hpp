@@ -44,7 +44,7 @@ struct Node : Node_Base {
   explicit Node(const T &data) : Node{this, this, data} {}
 
   Node(Node *prev, Node *next, T &&data)
-      : Node_Base{prev, next}, d_data{data} {}
+      : Node_Base{prev, next}, d_data{std::move(data)} {}
 
   template <typename... Args>
   explicit Node(Args &&... args)
@@ -262,7 +262,7 @@ class list {
   list(list &&other)
       : d_alloc{std::move(other.d_alloc)},
         d_node_alloc{std::move(other.d_alloc)} {
-    splice(cend(), other);
+    splice(cend(), std::move(other));
   }
 
   list(std::initializer_list<T> init, const Allocator &alloc = Allocator())
@@ -294,7 +294,7 @@ class list {
     if (std::allocator_traits<
             allocator_type>::propagate_on_container_move_assignment::value) {
       d_alloc = std::move(other.d_alloc);
-      splice(cend(), other);
+      splice(cend(), std::move(other));
     } else {
       for (auto &e : other) {
         emplace_back(std::move(e));
@@ -474,7 +474,7 @@ class list {
   void merge(list &other) { merge(std::move(other)); }
 
   void merge(list &&other) {
-    merge(other,
+    merge(std::move(other),
           [](const_reference lhs, const_reference rhs) { return lhs < rhs; });
   }
 
@@ -511,7 +511,7 @@ class list {
   }
 
   void splice(const_iterator pos, list &&other) {
-    splice(pos, other, other.cbegin(), other.cend());
+    splice(pos, std::move(other), other.cbegin(), other.cend());
   }
 
   void splice(const_iterator pos, list &other, const_iterator it) {
@@ -519,7 +519,7 @@ class list {
   }
 
   void splice(const_iterator pos, list &&other, const_iterator it) {
-    splice(pos, other, it, other.cend());
+    splice(pos, std::move(other), it, other.cend());
   }
 
   void splice(const_iterator pos, list &other, const_iterator first,
@@ -527,6 +527,11 @@ class list {
     splice(pos, std::move(other), first, last);
   }
 
+  /*
+   * Other rvalue ignored, we just need access to iterators.
+   * Head and tail pointer of other don't aren't a special case because of
+   * how the sentinel node works.
+   */
   void splice(const_iterator pos, list &&, const_iterator first,
               const_iterator last) {
     iterator ipos = pos.un_const();
