@@ -1,8 +1,5 @@
-#define BOOST_TEST_MAIN
-#define BOOST_TEST_DYN_LINK
-#define BOOST_TEST_MODULE vector test
 #include "Vector.hpp"
-#include <boost/test/unit_test.hpp>
+#include "gtest/gtest.h"
 #include <iostream>
 #include <string>
 #include <utility>
@@ -49,82 +46,82 @@ struct SlowStruct {
 };
 int SlowStruct::instance_count = 0;
 
-BOOST_AUTO_TEST_CASE(basic_test) {
+TEST(vector_test, basic_test) {  // NOLINT
   vector<int> v;
   v.push_back(1);
 }
 
-BOOST_AUTO_TEST_CASE(obj_test) {
+TEST(vector_test, obj_test) {  // NOLINT
   vector<std::pair<int, int>> v;
   v.push_back({1, 2});
   std::pair<int, int> p = {8, 5};
   v.push_back(p);
-  BOOST_REQUIRE_EQUAL(v.back().first, p.first);
-  BOOST_REQUIRE_EQUAL(v.back().second, p.second);
+  EXPECT_EQ(v.back().first, p.first);
+  EXPECT_EQ(v.back().second, p.second);
   vector<MoveStruct> mv;
   mv.emplace_back(1, 2.0);
   MoveStruct s{1, 2.0};
-  BOOST_REQUIRE(s == mv.back());
+  EXPECT_TRUE(s == mv.back());
   mv.emplace_back(2, 2.0);
   mv.emplace_back(3, 2.0);
   mv.emplace_back(4, 2.0);
   mv.emplace_back(5, 2.0);
 }
 
-BOOST_AUTO_TEST_CASE(copy_only_test) {
+TEST(vector_test, copy_only_test) {  // NOLINT
   {
     vector<SlowStruct> mv;
     for (int i = 0; i < 65; i++) {
       mv.emplace_back();
     }
-    BOOST_REQUIRE_EQUAL(SlowStruct::instance_count, 65);
+    EXPECT_EQ(SlowStruct::instance_count, 65);
   }
-  BOOST_REQUIRE_EQUAL(SlowStruct::instance_count, 0);
+  EXPECT_EQ(SlowStruct::instance_count, 0);
 }
 
-BOOST_AUTO_TEST_CASE(initializer_list_test) {
+TEST(vector_test, initializer_list_test) {  // NOLINT
   std::initializer_list<int> init = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   vector<int> v{1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-  BOOST_REQUIRE_EQUAL(v.size(), 10);
-  BOOST_REQUIRE_EQUAL_COLLECTIONS(v.begin(), v.end(), init.begin(), init.end());
+  EXPECT_EQ(v.size(), 10);
+  EXPECT_EQ(v, init);
 }
 
-BOOST_AUTO_TEST_CASE(equality_test) {
+TEST(vector_test, equality_test) {  // NOLINT
   vector<int> v1, v2;
   v1.push_back(2);
   v1.push_back(3);
   v2.push_back(2);
   v2.push_back(3);
-  BOOST_REQUIRE(v1 == v2);
+  EXPECT_TRUE(v1 == v2);
   v1.clear();
-  BOOST_REQUIRE(v1 != v2);
+  EXPECT_TRUE(v1 != v2);
 }
 
-BOOST_AUTO_TEST_CASE(index_test) {
+TEST(vector_test, index_test) {  // NOLINT
   vector<size_t> v1{0, 1, 2, 3, 4, 5};
   for (size_t i = 0; i < 6; i++) {
-    BOOST_REQUIRE_EQUAL(i, v1[i]);
+    EXPECT_EQ(i, v1[i]);
   }
   vector<int> v2;
   v2.push_back(6);
   v2.push_back(7);
-  BOOST_REQUIRE_EQUAL(v2.size(), 2);
-  BOOST_REQUIRE_EQUAL(6, v2[0]);
-  BOOST_REQUIRE_EQUAL(7, v2[1]);
+  EXPECT_EQ(v2.size(), 2);
+  EXPECT_EQ(6, v2[0]);
+  EXPECT_EQ(7, v2[1]);
 }
 
-BOOST_AUTO_TEST_CASE(const_test) {
+TEST(vector_test, const_test) {  // NOLINT
   const vector<std::string> v1{{"a", "b", "c"}};
   auto it = v1.begin();
   ++it;
 }
 
-BOOST_AUTO_TEST_CASE(move_test) {
+TEST(vector_test, move_test) {  // NOLINT
   {
     vector<std::string> v1{{"a", "b", "c"}};
     vector<std::string> v3{v1};
     vector<std::string> v2{std::move(v1)};
-    BOOST_REQUIRE_EQUAL_COLLECTIONS(v2.begin(), v2.end(), v3.begin(), v3.end());
+    EXPECT_EQ(v2, v3);
   }
   {
     vector<std::string> v1{{"a", "b", "c"}};
@@ -132,29 +129,29 @@ BOOST_AUTO_TEST_CASE(move_test) {
     v3 = v1;
     vector<std::string> v2{"2"};
     v2 = std::move(v1);
-    BOOST_REQUIRE_EQUAL_COLLECTIONS(v2.begin(), v2.end(), v3.begin(), v3.end());
+    EXPECT_EQ(v2, v3);
   }
 }
 
-BOOST_AUTO_TEST_CASE(iterator_test) {
+TEST(vector_test, iterator_test) {  // NOLINT
   using iterator = vector<std::string>::iterator;
   using const_iterator = vector<std::string>::const_iterator;
   vector<std::string> v{{"a", "b", "c"}};
   iterator it = v.begin();
   const_iterator cit = it;
-  BOOST_REQUIRE_EQUAL(*cit, *it);
+  EXPECT_EQ(*cit, *it);
 }
 
-BOOST_AUTO_TEST_CASE(erase_test) {
+TEST(vector_test, erase_test) {  // NOLINT
   vector<std::string> v1{{"a", "b", "c"}};
   vector<std::string> v2{{"b"}, {"c"}};
   vector<std::string> v3{{"c"}};
   v1.erase(v1.begin());
-  BOOST_REQUIRE_EQUAL_COLLECTIONS(v1.begin(), v1.end(), v2.begin(), v2.end());
+  EXPECT_EQ(v1, v2);
   v1.erase(v1.begin());
-  BOOST_REQUIRE_EQUAL_COLLECTIONS(v1.begin(), v1.end(), v3.begin(), v3.end());
+  EXPECT_EQ(v1, v3);
   v1.erase(v1.begin());
-  BOOST_REQUIRE(v1.empty());
+  EXPECT_TRUE(v1.empty());
   v1.erase(v1.begin(), v1.end());
-  BOOST_REQUIRE(v1.empty());
+  EXPECT_TRUE(v1.empty());
 }

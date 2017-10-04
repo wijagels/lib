@@ -1,8 +1,5 @@
 #include "Decorators.hpp"
-#define BOOST_TEST_MAIN
-#define BOOST_TEST_DYN_LINK
-#define BOOST_TEST_MODULE Decorator test
-#include <boost/test/unit_test.hpp>
+#include "gtest/gtest.h"
 #include <cstdlib>
 
 void sleeper(int);
@@ -17,8 +14,8 @@ int add(T a, U b) {
   return a + b;
 }
 
-BOOST_AUTO_TEST_CASE(timer_test) {
+TEST(decorator_test, timer_test) {
   makeDecorator(sleeper)(1);
   auto x = makeDecorator(add<int, int>)(1, 3);
-  BOOST_REQUIRE_EQUAL(x, 4);
+  EXPECT_EQ(x, 4);
 }

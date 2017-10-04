@@ -1,16 +1,14 @@
 #define LIST_DBG_ON
 #include "List.hpp"
-#define BOOST_TEST_MAIN
-#define BOOST_TEST_DYN_LINK
-#define BOOST_TEST_MODULE list test
 #include "Allocator.hpp"
+#include "gtest/gtest.h"
 #include <boost/pool/pool_alloc.hpp>
-#include <boost/test/unit_test.hpp>
 #include <iostream>
+#include <list>
 #include <random>
 
-using wijagels::list;
 using wijagels::BasicAllocator;
+using wijagels::list;
 
 static std::array<int, 9> push{{1, 2, 3, 4, 5, 6, 7, 8, 9}};
 
@@ -58,56 +56,55 @@ std::initializer_list<int> rand_list{
     5458, 1316, 1669, 1654, 4867, 5462, 5634, 7161, 9924, 2933, 9919, 7964,
     4993, 7686, 605,  1852, 7314, 4625, 8951, 1063};
 
-BOOST_AUTO_TEST_CASE(push_back_test) {
+TEST(ListTest, push_back_test) {  // NOLINT
   list<int> lst{};
   for (auto e : push) {
     lst.push_back(e);
   }
   auto iterator = lst.begin();
   for (auto e : push) {
-    BOOST_REQUIRE(*iterator++ == e);
+    EXPECT_TRUE(*iterator++ == e);
   }
 }
 
-BOOST_AUTO_TEST_CASE(push_front_test) {
+TEST(ListTest, push_front_test) {  // NOLINT
   list<int> lst{};
   for (auto e : push) {
     lst.push_front(e);
   }
   auto iterator = --lst.end();
   for (auto e : push) {
-    BOOST_REQUIRE(*iterator-- == e);
+    EXPECT_TRUE(*iterator-- == e);
   }
 }
 
-BOOST_AUTO_TEST_CASE(iteration_test) {
+TEST(ListTest, iteration_test) {  // NOLINT
   list<int> lst{};
   for (auto e : push) {
     lst.push_front(e);
   }
-  BOOST_REQUIRE(std::equal(lst.rbegin(), lst.rend(), push.begin(), push.end()));
+  EXPECT_TRUE(std::equal(lst.rbegin(), lst.rend(), push.begin(), push.end()));
 }
 
-BOOST_AUTO_TEST_CASE(erase_test) {
+TEST(ListTest, erase_test) {  // NOLINT
   list<int> lst{};
   for (auto e : push) {
     lst.push_back(e);
   }
-  BOOST_REQUIRE(std::equal(lst.begin(), lst.end(), push.begin(), push.end()));
+  EXPECT_TRUE(std::equal(lst.begin(), lst.end(), push.begin(), push.end()));
   lst.erase(lst.begin());
-  BOOST_REQUIRE(
-      std::equal(lst.begin(), lst.end(), push.begin() + 1, push.end()));
+  EXPECT_TRUE(std::equal(lst.begin(), lst.end(), push.begin() + 1, push.end()));
   while (lst.begin() != lst.end()) lst.erase(lst.begin());
 }
 
-BOOST_AUTO_TEST_CASE(emplace_test) {
+TEST(ListTest, emplace_test) {  // NOLINT
   list<int> lst{};
   for (auto e : push) {
     lst.emplace_back(e);
   }
   auto iterator = lst.begin();
   for (auto e : push) {
-    BOOST_REQUIRE(*iterator++ == e);
+    EXPECT_TRUE(*iterator++ == e);
   }
 }
 
@@ -132,7 +129,7 @@ struct StrictStruct {
   double b_;
 };
 
-BOOST_AUTO_TEST_CASE(emplace_class_test) {
+TEST(ListTest, emplace_class_test) {  // NOLINT
   list<StrictStruct> lst{};
   std::list<StrictStruct> slst{};
   lst.emplace_back(2, 3.0);
@@ -140,48 +137,48 @@ BOOST_AUTO_TEST_CASE(emplace_class_test) {
 
   lst.emplace_front(0, 2.0);
   slst.emplace_front(0, 2.0);
-  BOOST_REQUIRE(std::equal(lst.begin(), lst.end(), slst.begin(), slst.end()));
+  EXPECT_TRUE(std::equal(lst.begin(), lst.end(), slst.begin(), slst.end()));
 }
 
-BOOST_AUTO_TEST_CASE(resize_test) {
+TEST(ListTest, resize_test) {  // NOLINT
   list<int> lst{};
   lst.resize(1000, 1);
-  BOOST_REQUIRE(lst.size() == 1000);
+  EXPECT_TRUE(lst.size() == 1000);
   for (auto e : lst) {
-    BOOST_REQUIRE(e == 1);
+    EXPECT_TRUE(e == 1);
   }
   lst.resize(10);
-  BOOST_REQUIRE(lst.size() == 10);
+  EXPECT_TRUE(lst.size() == 10);
   for (auto e : lst) {
-    BOOST_REQUIRE(e == 1);
+    EXPECT_TRUE(e == 1);
   }
 }
 
-BOOST_AUTO_TEST_CASE(merge_test) {
+TEST(ListTest, merge_test) {  // NOLINT
   list<int> result{1, 2, 3, 4, 5, 6};
   {
     list<int> lst1{1, 3, 5};
     list<int> lst2{2, 4, 6};
     lst1.merge(lst2);
-    BOOST_REQUIRE(
+    EXPECT_TRUE(
         std::equal(lst1.begin(), lst1.end(), result.begin(), result.end()));
-    BOOST_REQUIRE_EQUAL(lst2.size(), 0);
+    EXPECT_EQ(lst2.size(), 0);
   }
   {
     list<int> lst1{1, 3, 5};
     list<int> lst2{2, 4, 6};
     lst2.merge(lst1);
-    BOOST_REQUIRE(
+    EXPECT_TRUE(
         std::equal(lst2.begin(), lst2.end(), result.begin(), result.end()));
   }
   {
     list<int> lst1{};
     list<int> lst2 = result;
     lst2.merge(lst1);
-    BOOST_REQUIRE(
+    EXPECT_TRUE(
         std::equal(lst2.begin(), lst2.end(), result.begin(), result.end()));
     lst1.merge(lst2);
-    BOOST_REQUIRE(
+    EXPECT_TRUE(
         std::equal(lst1.begin(), lst1.end(), result.begin(), result.end()));
   }
   {
@@ -190,10 +187,10 @@ BOOST_AUTO_TEST_CASE(merge_test) {
     list<int> lst3 = lst1;
     list<int> lst4 = lst2;
     lst2.merge(lst1);
-    BOOST_REQUIRE(
+    EXPECT_TRUE(
         std::equal(lst2.begin(), lst2.end(), result.begin(), result.end()));
     lst3.merge(lst4);
-    BOOST_REQUIRE(
+    EXPECT_TRUE(
         std::equal(lst3.begin(), lst3.end(), result.begin(), result.end()));
   }
   {
@@ -203,9 +200,9 @@ BOOST_AUTO_TEST_CASE(merge_test) {
     list<int> lst4 = lst2;
     lst1.merge(lst2);
     lst4.merge(lst3);
-    BOOST_REQUIRE(
+    EXPECT_TRUE(
         std::equal(lst1.begin(), lst1.end(), result.begin(), result.end()));
-    BOOST_REQUIRE(
+    EXPECT_TRUE(
         std::equal(lst4.begin(), lst4.end(), result.begin(), result.end()));
   }
   {
@@ -223,28 +220,28 @@ BOOST_AUTO_TEST_CASE(merge_test) {
     lst2.emplace_back(2, 16.0);
     lst2.emplace_back(8, 1.0);
     lst2.merge(lst1);
-    BOOST_REQUIRE(std::equal(lst2.begin(), lst2.end(), res.begin(), res.end()));
+    EXPECT_TRUE(std::equal(lst2.begin(), lst2.end(), res.begin(), res.end()));
   }
 }
 
-BOOST_AUTO_TEST_CASE(splice_test) {
+TEST(ListTest, splice_test) {  // NOLINT
   list<int> lst1{1, 2, 6};
   list<int> lst2{3, 4, 5};
   list<int> result{1, 2, 6, 3, 4, 5};
   lst1.splice(lst1.cend(), lst2);
-  BOOST_REQUIRE(
+  EXPECT_TRUE(
       std::equal(lst1.begin(), lst1.end(), result.begin(), result.end()));
 }
 
-BOOST_AUTO_TEST_CASE(remove_test) {
+TEST(ListTest, remove_test) {  // NOLINT
   list<int> lst1{0, 1, 1, 1, 30, 0, 0, 1, 0};
   list<int> result{1, 1, 1, 30, 1};
   lst1.remove(0);
-  BOOST_REQUIRE(
+  EXPECT_TRUE(
       std::equal(lst1.begin(), lst1.end(), result.begin(), result.end()));
 }
 
-BOOST_AUTO_TEST_CASE(remove_if_test) {
+TEST(ListTest, remove_if_test) {  // NOLINT
   list<int> lst1{0, 1, 1, 1, 30, 0, 0, 1, 0};
   list<int> result{1, 1, 1, 30, 1};
   size_t n = lst1.size();
@@ -253,56 +250,56 @@ BOOST_AUTO_TEST_CASE(remove_if_test) {
     return i == 0;
   });
   // Should be exactly size() applications of predicate
-  BOOST_REQUIRE_EQUAL(n, 0);
-  BOOST_REQUIRE(
+  EXPECT_EQ(n, 0);
+  EXPECT_TRUE(
       std::equal(lst1.begin(), lst1.end(), result.begin(), result.end()));
   lst1.remove_if([](const int &) { return true; });
-  BOOST_REQUIRE(lst1.empty());
+  EXPECT_TRUE(lst1.empty());
 }
 
-BOOST_AUTO_TEST_CASE(reverse_test) {
+TEST(ListTest, reverse_test) {  // NOLINT
   list<int> lst1{1, 2, 3};
   list<int> result{3, 2, 1};
   lst1.reverse();
-  BOOST_REQUIRE(
+  EXPECT_TRUE(
       std::equal(lst1.begin(), lst1.end(), result.begin(), result.end()));
 }
 
-BOOST_AUTO_TEST_CASE(unique_test) {
+TEST(ListTest, unique_test) {  // NOLINT
   list<int> lst1{1, 1, 2, 2, 3, 4, 4, 5, 6, 6};
   list<int> result{1, 2, 3, 4, 5, 6};
   lst1.unique();
-  BOOST_REQUIRE(
+  EXPECT_TRUE(
       std::equal(lst1.begin(), lst1.end(), result.begin(), result.end()));
 }
 
-BOOST_AUTO_TEST_CASE(sort_test) {
+TEST(ListTest, sort_test) {  // NOLINT
   list<int> lst1{6, 5, 4, 3, 2, 1};
   list<int> result{1, 2, 3, 4, 5, 6};
   lst1.sort();
-  BOOST_REQUIRE(
+  EXPECT_TRUE(
       std::equal(lst1.begin(), lst1.end(), result.begin(), result.end()));
   list<int> lst2{rand_list};
   std::vector<int> result2{rand_list};
   lst2.sort();
   std::sort(result2.begin(), result2.end());
-  BOOST_REQUIRE(
+  EXPECT_TRUE(
       std::equal(lst2.begin(), lst2.end(), result2.begin(), result2.end()));
 }
 
-BOOST_AUTO_TEST_CASE(construct_test) {
+TEST(ListTest, construct_test) {  // NOLINT
   list<StrictStruct> lst1{};
   lst1.emplace_back(1, 2.0);
   lst1.emplace_back(2, 3.0);
   list<StrictStruct> lst2 = std::move(lst1);
   list<int> lst3{list<int>{1, 2, 3}};
-  BOOST_REQUIRE(lst3 == (list<int>{1, 2, 3}));
+  EXPECT_TRUE(lst3 == (list<int>{1, 2, 3}));
   list<int> lst4{};
   lst4 = std::move(lst3);
-  BOOST_REQUIRE(lst4 == (list<int>{1, 2, 3}));
+  EXPECT_TRUE(lst4 == (list<int>{1, 2, 3}));
 }
 
-BOOST_AUTO_TEST_CASE(large_sort) {
+TEST(ListTest, large_sort) {  // NOLINT
   list<int64_t> lst{};
   for (size_t i = 0; i < 1e5; i++) {
     int64_t n = rand();
@@ -311,41 +308,37 @@ BOOST_AUTO_TEST_CASE(large_sort) {
     else
       lst.push_front(n);
   }
-  // BOOST_REQUIRE(lst.verify_integrity());
+  // EXPECT_TRUE(lst.verify_integrity());
   lst.sort();
-  // BOOST_REQUIRE(lst.verify_integrity());
+  // EXPECT_TRUE(lst.verify_integrity());
 }
 
-BOOST_AUTO_TEST_CASE(assign_test) {
+TEST(ListTest, assign_test) {  // NOLINT
   auto ilist = {1, 2, 3};
   auto ilist2 = {1, 2, 3, 4};
   list<int> lst1{1, 2, 3};
   list<int> lst2{3, 2, 1};
   lst2 = std::move(lst1);  // Move-assign
-  BOOST_REQUIRE(
-      std::equal(lst2.begin(), lst2.end(), ilist.begin(), ilist.end()));
+  EXPECT_TRUE(std::equal(lst2.begin(), lst2.end(), ilist.begin(), ilist.end()));
   list<int> lst3{3};
   lst3 = lst2;  // Copy-assign
-  BOOST_REQUIRE(
-      std::equal(lst3.begin(), lst3.end(), ilist.begin(), ilist.end()));
+  EXPECT_TRUE(std::equal(lst3.begin(), lst3.end(), ilist.begin(), ilist.end()));
   lst3.push_back(4);
   // Check original is same
-  BOOST_REQUIRE(
-      std::equal(lst2.begin(), lst2.end(), ilist.begin(), ilist.end()));
-  BOOST_REQUIRE(
+  EXPECT_TRUE(std::equal(lst2.begin(), lst2.end(), ilist.begin(), ilist.end()));
+  EXPECT_TRUE(
       std::equal(lst3.begin(), lst3.end(), ilist2.begin(), ilist2.end()));
 }
 
-BOOST_AUTO_TEST_CASE(iterator_test) {
+TEST(ListTest, iterator_test) {  // NOLINT
   std::list<int> result{1, 2, 8, 16};
   list<int> lst{1, 2, 8, 16};
-  BOOST_REQUIRE(
-      std::equal(lst.begin(), lst.end(), result.begin(), result.end()));
-  BOOST_REQUIRE(
+  EXPECT_TRUE(std::equal(lst.begin(), lst.end(), result.begin(), result.end()));
+  EXPECT_TRUE(
       std::equal(lst.cbegin(), lst.cend(), result.cbegin(), result.cend()));
-  BOOST_REQUIRE(
+  EXPECT_TRUE(
       std::equal(lst.rbegin(), lst.rend(), result.rbegin(), result.rend()));
-  BOOST_REQUIRE(
+  EXPECT_TRUE(
       std::equal(lst.crbegin(), lst.crend(), result.crbegin(), result.crend()));
 }
 
@@ -396,12 +389,12 @@ template <typename T, typename U>
 constexpr bool operator!=(const MyAllocator<T> &,
                           const MyAllocator<U> &) noexcept;
 
-BOOST_AUTO_TEST_CASE(allocator_test) {
+TEST(ListTest, allocator_test) {  // NOLINT
   MyAllocator<int> pool{};
   list<int, decltype(pool)> lst{pool};
   for (auto e : push) {
     lst.emplace_back(e);
   }
-  BOOST_REQUIRE(std::equal(lst.begin(), lst.end(), push.begin(), push.end()));
-  BOOST_REQUIRE(lst.d_node_alloc.counter == 9);
+  EXPECT_TRUE(std::equal(lst.begin(), lst.end(), push.begin(), push.end()));
+  EXPECT_TRUE(lst.d_node_alloc.counter == 9);
 }

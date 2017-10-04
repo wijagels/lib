@@ -262,7 +262,7 @@ class skiplist {
 
    private:
     iterator un_const() const {
-      return iterator{const_cast<skip_node_base *>(d_node_p)};
+      return iterator{const_cast<skip_node_base *>(d_node_p)};  // NOLINT
     }
   };
 

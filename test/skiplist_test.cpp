@@ -1,8 +1,5 @@
-#define BOOST_TEST_MAIN
-#define BOOST_TEST_DYN_LINK
-#define BOOST_TEST_MODULE SkipList test
 #include "SkipList.hpp"
-#include <boost/test/unit_test.hpp>
+#include "gtest/gtest.h"
 #include <set>
 
 using wijagels::skiplist;
@@ -58,13 +55,12 @@ const std::initializer_list<int> g_md_list{
     9076, 356,  4511, 420,  7617, 456, 5413, 669,  6762, 9944, 1464, 3731,
 };
 
-BOOST_AUTO_TEST_CASE(insert_test) {
+TEST(skiplist_test, insert_test) {  // NOLINT
   skiplist<int> s{};
   for (auto e : g_seed) {
     s.insert(e);
   }
-  BOOST_REQUIRE(
-      std::equal(s.begin(), s.end(), g_sorted.begin(), g_sorted.end()));
+  EXPECT_TRUE(std::equal(s.begin(), s.end(), g_sorted.begin(), g_sorted.end()));
 }
 
 struct nocopy {
@@ -83,46 +79,46 @@ struct nocopy {
   int data;
 };
 
-BOOST_AUTO_TEST_CASE(move_insert_test) {
+TEST(skiplist_test, move_insert_test) {  // NOLINT
   skiplist<nocopy> s{};
   s.insert(nocopy{1});
   s.insert(nocopy{2});
   s.insert(nocopy{3});
   std::initializer_list<nocopy> result = {{1}, {2}, {3}};
-  BOOST_REQUIRE(std::equal(s.begin(), s.end(), result.begin(), result.end()));
+  EXPECT_TRUE(std::equal(s.begin(), s.end(), result.begin(), result.end()));
 }
 
-BOOST_AUTO_TEST_CASE(med_insert_test) {
+TEST(skiplist_test, med_insert_test) {  // NOLINT
   std::set<int> rand_list_sorted = g_md_list;
   skiplist<int> s{};
   for (auto e : g_md_list) {
     s.insert(e);
   }
-  BOOST_REQUIRE(std::equal(s.begin(), s.end(), rand_list_sorted.begin(),
-                           rand_list_sorted.end()));
+  EXPECT_TRUE(std::equal(s.begin(), s.end(), rand_list_sorted.begin(),
+                         rand_list_sorted.end()));
 }
 
-BOOST_AUTO_TEST_CASE(big_insert_test) {
+TEST(skiplist_test, big_insert_test) {  // NOLINT
   std::set<int> rand_list_sorted = g_rand_list;
   skiplist<int> s{};
   for (auto e : g_rand_list) {
     s.insert(e);
   }
-  BOOST_REQUIRE(std::equal(s.begin(), s.end(), rand_list_sorted.begin(),
-                           rand_list_sorted.end()));
+  EXPECT_TRUE(std::equal(s.begin(), s.end(), rand_list_sorted.begin(),
+                         rand_list_sorted.end()));
 }
 
-BOOST_AUTO_TEST_CASE(big_emplace_test) {
+TEST(skiplist_test, big_emplace_test) {  // NOLINT
   std::set<int> rand_list_sorted = g_rand_list;
   skiplist<int> s{};
   for (auto e : g_rand_list) {
     s.emplace(e);
   }
-  BOOST_REQUIRE(std::equal(s.begin(), s.end(), rand_list_sorted.begin(),
-                           rand_list_sorted.end()));
+  EXPECT_TRUE(std::equal(s.begin(), s.end(), rand_list_sorted.begin(),
+                         rand_list_sorted.end()));
 }
 
-BOOST_AUTO_TEST_CASE(erase_test) {
+TEST(skiplist_test, erase_test) {  // NOLINT
   std::set<int> nums{1, 2, 3, 4, 5};
   skiplist<int> s{};
   for (auto e : nums) {
@@ -130,10 +126,10 @@ BOOST_AUTO_TEST_CASE(erase_test) {
   }
   s.erase(s.begin());
   nums.erase(nums.begin());
-  BOOST_REQUIRE(std::equal(s.begin(), s.end(), nums.begin(), nums.end()));
+  EXPECT_TRUE(std::equal(s.begin(), s.end(), nums.begin(), nums.end()));
 }
 
-BOOST_AUTO_TEST_CASE(extract_test) {
+TEST(skiplist_test, extract_test) {  // NOLINT
   std::set<int> nums{1, 2, 3, 4, 5};
   auto s = new skiplist<int>{};
   for (auto e : nums) {
@@ -141,10 +137,10 @@ BOOST_AUTO_TEST_CASE(extract_test) {
   }
   auto nh = s->extract(s->begin());
   s->insert(std::move(nh));
-  BOOST_REQUIRE_EQUAL(1, *s->begin());
+  EXPECT_EQ(1, *s->begin());
 }
 
-BOOST_AUTO_TEST_CASE(find_test) {
+TEST(skiplist_test, find_test) {  // NOLINT
   std::set<int> nums{1, 2, 3, 4, 5};
   skiplist<int> s{};
   for (auto e : nums) {
@@ -152,14 +148,13 @@ BOOST_AUTO_TEST_CASE(find_test) {
   }
   s.insert(12);
   for (auto e : nums) {
-    BOOST_REQUIRE(*s.find(e) == e);
+    EXPECT_TRUE(*s.find(e) == e);
   }
   s.erase(s.find(12));
-  BOOST_REQUIRE(s.find(12) == s.end());  // Not in list
-  s.print_state();
+  EXPECT_TRUE(s.find(12) == s.end());  // Not in list
 }
 
-BOOST_AUTO_TEST_CASE(huge_test) {
+TEST(skiplist_test, huge_test) {  // NOLINT
   std::uniform_int_distribution<int64_t> distrib{1, 1000};
   std::random_device rd;
   std::mt19937_64 gen{rd()};
@@ -171,66 +166,58 @@ BOOST_AUTO_TEST_CASE(huge_test) {
     auto r = list.find(distrib(gen));
     if (r != list.end()) list.erase(r);
   }
-  BOOST_REQUIRE(std::is_sorted(list.begin(), list.end()));
+  EXPECT_TRUE(std::is_sorted(list.begin(), list.end()));
 }
 
-BOOST_AUTO_TEST_CASE(merge_test) {
+TEST(skiplist_test, merge_test) {  // NOLINT
   std::initializer_list<int> result1{1, 2, 3, 4, 5, 6, 7};
   std::initializer_list<int> result2{1, 2};
   skiplist<int> list1{1, 2, 3, 5};
   skiplist<int> list2{1, 2, 4, 6, 7};
   list1.merge(list2);
-  BOOST_REQUIRE(std::is_sorted(list1.begin(), list1.end()));
-  BOOST_REQUIRE(std::is_sorted(list2.begin(), list2.end()));
-  BOOST_REQUIRE(
+  EXPECT_TRUE(std::is_sorted(list1.begin(), list1.end()));
+  EXPECT_TRUE(std::is_sorted(list2.begin(), list2.end()));
+  EXPECT_TRUE(
       std::equal(list1.begin(), list1.end(), result1.begin(), result1.end()));
-  BOOST_REQUIRE(
+  EXPECT_TRUE(
       std::equal(list2.begin(), list2.end(), result2.begin(), result2.end()));
-  list1.print_state();
-  list2.print_state();
   list1.verify_integrity();
   list2.verify_integrity();
 }
 
-BOOST_AUTO_TEST_CASE(iterator_test) {
+TEST(skiplist_test, iterator_test) {  // NOLINT
   std::set<int> result{3, 5, 1, 7, 16};
   skiplist<int> list{3, 5, 1, 7, 16};
-  for (auto it = list.rbegin(); it != list.rend(); ++it) {
-    printf("%d\n", *it);
-  }
-  BOOST_REQUIRE(std::is_sorted(list.begin(), list.end()));
-  BOOST_REQUIRE(
+  EXPECT_TRUE(std::is_sorted(list.begin(), list.end()));
+  EXPECT_TRUE(
       std::equal(list.begin(), list.end(), result.begin(), result.end()));
-  BOOST_REQUIRE(
+  EXPECT_TRUE(
       std::equal(list.cbegin(), list.cend(), result.begin(), result.end()));
-  BOOST_REQUIRE(
+  EXPECT_TRUE(
       std::equal(list.rbegin(), list.rend(), result.rbegin(), result.rend()));
-  BOOST_REQUIRE(std::equal(list.crbegin(), list.crend(), result.crbegin(),
-                           result.crend()));
+  EXPECT_TRUE(std::equal(list.crbegin(), list.crend(), result.crbegin(),
+                         result.crend()));
 }
 
-BOOST_AUTO_TEST_CASE(size_test) {
+TEST(skiplist_test, size_test) {  // NOLINT
   skiplist<int> list{1, 2, 3};
-  BOOST_REQUIRE_EQUAL(list.size(), 3);
+  EXPECT_EQ(list.size(), 3);
   list.insert(4);
-  BOOST_REQUIRE_EQUAL(list.size(), 4);
+  EXPECT_EQ(list.size(), 4);
   list.erase(list.find(4));
-  BOOST_REQUIRE_EQUAL(list.size(), 3);
+  EXPECT_EQ(list.size(), 3);
   list.clear();
-  BOOST_REQUIRE_EQUAL(list.size(), 0);
+  EXPECT_EQ(list.size(), 0);
 }
 
-BOOST_AUTO_TEST_CASE(move_test) {
+TEST(skiplist_test, move_test) {  // NOLINT
   skiplist<int> list{g_rand_list};
   skiplist<int> nls{1};
-  BOOST_TEST_MESSAGE("Running move_test, if this takes long something's wrong");
   for (int i = 0; i < 1e4; i++) {
     nls = std::move(list);
     list = std::move(nls);
   }
   skiplist<int> result{g_rand_list};
-  BOOST_REQUIRE(
+  EXPECT_TRUE(
       std::equal(list.begin(), list.end(), result.begin(), result.end()));
-  BOOST_TEST_MESSAGE("Passed move_test");
 }
-

@@ -217,7 +217,13 @@ class list {
     }
 
    private:
-    iterator un_const() { return iterator{const_cast<Node_Base *>(d_node_p)}; }
+    /**
+     * Note that this is only used in the context of having a mutable reference
+     * into the underlying container.
+     */
+    iterator un_const() {
+      return iterator{const_cast<Node_Base *>(d_node_p)};  // NOLINT
+    }
   };
 
  public:
@@ -531,6 +537,8 @@ class list {
    * Other rvalue ignored, we just need access to iterators.
    * Head and tail pointer of other don't aren't a special case because of
    * how the sentinel node works.
+   * Using this on iterators from a different list is undefined,
+   * and will violate const-ness.
    */
   void splice(const_iterator pos, list &&, const_iterator first,
               const_iterator last) {

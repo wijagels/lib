@@ -27,6 +27,14 @@ struct BasicAllocator : public pointer_traits<T> {
 
   ~BasicAllocator() = default;
 
+  BasicAllocator(const BasicAllocator &) noexcept {}
+
+  BasicAllocator(BasicAllocator &&) noexcept {}
+
+  BasicAllocator &operator=(const BasicAllocator &) noexcept {}
+
+  BasicAllocator &operator=(BasicAllocator &&) noexcept {}
+
   template <typename U>
   BasicAllocator(const BasicAllocator<U> &) noexcept {}
 

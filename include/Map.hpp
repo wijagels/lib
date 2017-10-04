@@ -66,7 +66,9 @@ class map {
     using mapped_type = T;
 
     node_type() = default;
-    node_type(node_type &&nh) = default;
+    ~node_type() = default;
+    node_type(const node_type &) = delete;
+    node_type(node_type &&) = default;
 
     /*
      * Conversion constructor from base class
@@ -74,7 +76,8 @@ class map {
     node_type(typename container_type::node_type &&nh)
         : container_type::node_type{std::move(nh)} {}
 
-    node_type &operator=(node_type &&nh) = default;
+    node_type &operator=(const node_type &) = delete;
+    node_type &operator=(node_type &&) = default;
 
     key_type &key() const {
       return container_type::node_type::d_node_p->d_data.first;
