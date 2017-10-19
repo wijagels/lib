@@ -119,6 +119,14 @@ class vector {
       return distance(lhs, rhs);
     }
 
+    friend inline iterator operator-(difference_type n, const iterator &rhs) {
+      return iterator{n - rhs.d_data_p};
+    }
+
+    friend inline iterator operator-(const iterator &lhs, difference_type n) {
+      return iterator{lhs.d_data_p - n};
+    }
+
    private:
     pointer d_data_p;
     friend const_iterator;
@@ -224,6 +232,16 @@ class vector {
       return distance(lhs, rhs);
     }
 
+    friend inline const_iterator operator-(difference_type n,
+                                           const const_iterator &rhs) {
+      return const_iterator{n - rhs.d_data_p};
+    }
+
+    friend inline const_iterator operator-(const const_iterator &lhs,
+                                           difference_type n) {
+      return const_iterator{lhs.d_data_p - n};
+    }
+
    private:
     pointer d_data_p;
     friend vector;
@@ -311,6 +329,25 @@ class vector {
       d_buffer_p = nullptr;
       d_buffer_capacity = 0;
     }
+  }
+
+  void shift_after_by_(const iterator &pos, size_t n) {
+    if (n < 1) throw std::invalid_argument{"Invalid shift size"};
+    const auto end_iter = end();
+    const auto shift_end = pos + static_cast<difference_type>(n - 1);
+    auto input = end_iter - 1;
+    auto destination = end_iter + static_cast<difference_type>(n - 1);
+    while (destination > shift_end) {
+      if (destination < end_iter) {
+        *destination = std::move_if_noexcept(*input);
+      } else {
+        alloc_traits::construct(d_allocator, &*destination,
+                                std::move_if_noexcept(*input));
+      }
+      --input;
+      --destination;
+    }
+    d_size += n;
   }
 
  public:
@@ -460,11 +497,13 @@ class vector {
 
   void assign(std::initializer_list<T> init) {
     change_capacity_nocopy_(init.size());
-    size_type i = 0;
-    for (auto it = init.begin(); it != init.end(); ++i, ++it) {
+    size_t i = 0;
+    for (auto &&el : init) {
       alloc_traits::construct(d_allocator, &d_buffer_p[i],
-                              std::move_if_noexcept(*it));
+                              std::move_if_noexcept(el));
+      ++i;
     }
+    d_size = init.size();
   }
 
   allocator_type get_allocator() const noexcept { return d_allocator; }
@@ -614,19 +653,85 @@ class vector {
   }
 
   template <class... Args>
-  iterator emplace(const_iterator position, Args &&... args);
+  iterator emplace(const_iterator position, Args &&... args) {
+    // Save index before potentially invalidating
+    auto idx = position - cbegin();
 
-  iterator insert(const_iterator position, const T &x);
+    if (size() >= capacity()) grow_();  // May invalidate iterators
 
-  iterator insert(const_iterator position, T &&x);
+    iterator pos = begin() + idx;
+    auto end_iter = end();
+    shift_after_by_(pos, 1);  // Handles size change
+    if (pos != end_iter) alloc_traits::destroy(d_allocator, &*pos);
+    alloc_traits::construct(d_allocator, &*pos, std::forward<Args>(args)...);
+    return pos;
+  }
 
-  iterator insert(const_iterator position, size_type n, const T &x);
+  iterator insert(const_iterator position, const T &x) { emplace(position, x); }
 
-  template <class InputIterator>
+  iterator insert(const_iterator position, T &&x) {
+    return emplace(position, std::move(x));
+  }
+
+  iterator insert(const_iterator position, size_type n, const T &x) {
+    // Save index before potentially invalidating
+    auto idx = position - cbegin();
+
+    // May invalidate iterators
+    if (size() + n >= capacity()) change_capacity_(size() + n);
+
+    iterator pos = begin() + idx;
+    auto end_iter = end();
+    shift_after_by_(pos, n);  // Handles size change
+    if (pos != end_iter) alloc_traits::destroy(d_allocator, &*pos);
+    for (; n > 0; --n) {
+      auto dest = pos + n;
+      if (dest < end_iter) alloc_traits::destroy(d_allocator, &*dest);
+      alloc_traits::construct(d_allocator, &*dest, x);
+    }
+    return pos;
+  }
+
+  template <class InputIterator, class = typename std::iterator_traits<
+                                     InputIterator>::iterator_category>
   iterator insert(const_iterator position, InputIterator first,
-                  InputIterator last);
+                  InputIterator last) {
+    auto n = std::distance(first, last);
+    auto idx = position - cbegin();
+    if (size() + n >= capacity()) change_capacity_(size() + n);
+    iterator pos = begin() + idx;
+    auto end_iter = end();
+    shift_after_by_(pos, n);  // Handles size change
+    if (pos != end_iter) alloc_traits::destroy(d_allocator, &*pos);
+    for (difference_type i = 0; first != last; ++first, ++i) {
+      auto dest = pos + i;
+      if (dest < end_iter)
+        *dest = *first;
+      else
+        alloc_traits::construct(d_allocator, &*dest, *first);
+    }
+    return pos;
+  }
 
-  iterator insert(const_iterator position, std::initializer_list<T> il);
+  iterator insert(const_iterator position, std::initializer_list<T> il) {
+    auto idx = position - cbegin();
+    if (size() + il.size() >= capacity()) change_capacity_(size() + il.size());
+    auto pos = iterator{begin() + idx};
+    auto end_iter = end();
+    shift_after_by_(pos, il.size());  // Handles size change
+    if (pos != end_iter) alloc_traits::destroy(d_allocator, &*pos);
+    difference_type i = 0;
+    for (auto &&el : il) {
+      auto dest = pos + i;
+      if (dest < end_iter) {
+        *dest = std::move_if_noexcept(el);
+      } else {
+        alloc_traits::construct(d_allocator, &*dest, std::move_if_noexcept(el));
+      }
+      ++i;
+    }
+    return pos;
+  }
 
   iterator erase(const_iterator position) {
     return erase(position, position + 1);

@@ -155,3 +155,48 @@ TEST(vector_test, erase_test) {  // NOLINT
   v1.erase(v1.begin(), v1.end());
   EXPECT_TRUE(v1.empty());
 }
+
+TEST(vector_test, emplace_test) {  // NOLINT
+  vector<std::string> v{{"b", "c", "d", "f"}};
+  v.emplace(v.begin(), "a");
+  EXPECT_EQ(v.front(), "a");
+  auto it = std::find(v.begin(), v.end(), "f");
+  it = v.emplace(it, "e");
+  EXPECT_EQ(*it, "e");
+  vector<std::string> result{{"a", "b", "c", "d", "e", "f"}};
+  EXPECT_EQ(v, result);
+
+  result = {"a", "b", "c", "d", "e", "f", "g"};
+  v.emplace(v.end(), "g");
+  EXPECT_EQ(v, result);
+}
+
+TEST(vector_test, insert_test) {  // NOLINT
+  vector<std::string> v{std::initializer_list<std::string>{"a", "e"}};
+  auto it = std::find(std::begin(v), std::end(v), "e");
+  v.insert(it, {"b", "c", "d"});
+  {
+    vector<std::string> result{{"a", "b", "c", "d", "e"}};
+    EXPECT_EQ(v, result);
+  }
+
+  v = {};
+  v.insert(std::begin(v), {"a", "b"});
+  {
+    auto result = vector<std::string>{"a", "b"};
+    EXPECT_EQ(v, result);
+  }
+  v = {};
+  v.insert(std::end(v), {"a", "b"});
+  {
+    auto result = vector<std::string>{"a", "b"};
+    EXPECT_EQ(v, result);
+  }
+}
+
+TEST(vector_test, assign_test) {  // NOLINT
+  auto result = vector<std::string>{{"a", "b"}};
+  auto v = vector<std::string>{{"foo", "trash", "garbage"}};
+  v.assign(std::begin(result), std::end(result));
+  EXPECT_EQ(v, result);
+}

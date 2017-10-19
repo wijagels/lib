@@ -37,6 +37,9 @@ errors.
 The header includes orthogonal projections, euclidean distance,
 Manhattan distance, and some common operators.
 
+### Vector
+STL vector implementation.
+
 ## License
 This project is licensed under the MIT License.
 See the license text in [LICENSE.md](LICENSE.md).
