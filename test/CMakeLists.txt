@@ -33,6 +33,5 @@ else()
       algorithm_test
     PROPERTIES
       CXX_CLANG_TIDY "${DO_CLANG_TIDY}"
-      LINK_WHAT_YOU_USE TRUE
   )
 endif()
