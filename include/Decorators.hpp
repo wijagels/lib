@@ -59,9 +59,7 @@ template <typename Ret, typename... Args>
 struct TimerHook {
   TimerHook() = default;
 
-  auto pre(Args...) {
-    d_start_time = std::chrono::system_clock::now();
-  }
+  auto pre(Args...) { d_start_time = std::chrono::system_clock::now(); }
 
   template <typename Ret2,
             typename = std::enable_if_t<is_similar_v<Ret2, Ret> &&
@@ -91,9 +89,7 @@ template <typename Pre, typename Post, typename Ret, typename... Args>
 struct StatelessHook {
   constexpr StatelessHook(Pre pre, Post post) : d_pre{pre}, d_post{post} {}
 
-  constexpr auto pre(Args... args) {
-    d_pre(std::forward<Args>(args)...);
-  }
+  constexpr auto pre(Args... args) { d_pre(std::forward<Args>(args)...); }
 
   template <typename Ret2,
             typename = std::enable_if_t<is_similar_v<Ret2, Ret> &&
@@ -102,9 +98,7 @@ struct StatelessHook {
     return d_post(std::forward<Ret2>(returned));
   }
 
-  constexpr auto post() {
-    return d_post();
-  }
+  constexpr auto post() { return d_post(); }
 
   Pre d_pre;
   Post d_post;
@@ -118,10 +112,12 @@ constexpr auto make_decorator(Hook hook, R (*f)(Args...)) {
   return Decorator<R(Args...), Hook>{f, std::move(hook)};
 }
 
-template <typename Hook, typename Callable, typename R, typename... Args, typename = std::enable_if_t<std::is_invocable_r_v<R, Callable, Args...>>>
+template <
+    typename Hook, typename Callable, typename R, typename... Args,
+    typename = std::enable_if_t<std::is_invocable_r_v<R, Callable, Args...>>>
 constexpr auto make_decorator(Hook hook, Callable f) {
-  return Decorator<R(Args...), Hook>{std::function<R(Args...)>{f}, std::move(hook)};
+  return Decorator<R(Args...), Hook>{std::function<R(Args...)>{f},
+                                     std::move(hook)};
 }
-
 
 #endif  // INCLUDE_DECORATORS_HPP_
