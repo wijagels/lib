@@ -3,7 +3,8 @@
 #define INCLUDE_MAP_HPP_
 #include "SkipList.hpp"
 #include <functional>
-#include <iostream>
+#include <initializer_list>
+#include <iterator>
 #include <memory>
 #include <type_traits>
 #include <utility>
@@ -23,7 +24,7 @@ class map {
   using allocator_type = Allocator;
   using reference = value_type &;
   using const_reference = const value_type &;
-  using pointer = typename std::allocator_traits<Allocator>::pointer;
+  using pointer = typename std::allocator_traits<allocator_type>::pointer;
   /* Comparison functor for value_type */
   class value_compare {
    protected:
@@ -57,7 +58,6 @@ class map {
   using ReverseIterator = reverse_iterator;
   using const_reverse_iterator =
       typename container_type::const_reverse_iterator;
-  // using node_type = typename container_type::node_type;
   struct node_type;
   using insert_return_type = detail::InsertReturnType<iterator, node_type>;
 
@@ -93,10 +93,7 @@ class map {
   map() : map{Compare()} {}
 
   explicit map(const Compare &comp, const Allocator &alloc = Allocator{})
-      : d_comp{comp},
-        d_val_comp{comp},
-        d_alloc{alloc},
-        d_container{d_val_comp, d_alloc} {}
+      : d_comp{comp}, d_val_comp{comp}, d_container{d_val_comp, alloc} {}
 
   explicit map(const Allocator &alloc) : map{Compare{}, alloc} {}
 
@@ -114,29 +111,25 @@ class map {
   map(const map &other)
       : d_comp{other.d_comp},
         d_val_comp{other.d_val_comp},
-        d_alloc{other.d_alloc},
         d_container{other.d_container} {}
 
   map(const map &other, const Allocator &alloc)
       : d_comp{other.d_comp},
         d_val_comp{other.d_val_comp},
-        d_alloc{alloc},
-        d_container{other.d_container} {}
+        d_container{other.d_container, alloc} {}
 
   map(map &&other)
       : d_comp{std::move(other.d_comp)},
         d_val_comp{std::move(other.d_val_comp)},
-        d_alloc{std::move(other.d_alloc)},
         d_container{std::move(other.d_container)} {}
 
   map(map &&other, const Allocator &alloc)
       : d_comp{std::move(other.d_comp)},
         d_val_comp{std::move(other.d_val_comp)},
-        d_alloc{alloc},
-        d_container{std::move(other.d_container)} {}
+        d_container{std::move(other.d_container), alloc} {}
 
   map(std::initializer_list<value_type> init, const Compare &comp = Compare(),
-      const Allocator &alloc = Allocator())
+      const Allocator &alloc = Allocator{})
       : map{comp, alloc} {
     insert(init);
   }
@@ -155,19 +148,13 @@ class map {
     clear();
     d_comp = other.d_comp;
     d_val_comp = value_compare{d_comp};
-    d_alloc = other.d_alloc;
     d_container = other.d_container;
     return *this;
   }
 
   map &operator=(map &&other) noexcept(
-      std::allocator_traits<Allocator>::is_always_equal::value
-          &&std::is_nothrow_move_assignable<Compare>::value) {
+      container_type::operator=(std::move(container_type{}))) {
     d_val_comp = other.d_val_comp;
-    if (std::allocator_traits<
-            allocator_type>::propagate_on_container_move_assignment()) {
-      d_alloc = other.d_alloc;
-    }
     d_container = std::move(other.d_container);
   }
 
@@ -176,7 +163,7 @@ class map {
   }
 
   /* Allocator */
-  allocator_type get_allocator() const { return d_alloc; }
+  allocator_type get_allocator() const { return d_container.get_allocator(); }
 
   /* Element access */
   T &at(const Key &key) {
@@ -368,8 +355,7 @@ class map {
   size_type erase(const key_type &key) { return d_container.erase(key); }
 
   void swap(map &other) noexcept(
-      std::allocator_traits<Allocator>::is_always_equal::value
-          &&std::__is_nothrow_swappable<Compare>::value) {
+      container_type::swap(std::ref(container_type{}))) {
     std::swap(d_val_comp, other.d_val_comp);
     std::swap(d_container, other.d_container);
   }
@@ -467,7 +453,6 @@ class map {
  private:
   key_compare d_comp;
   value_compare d_val_comp;
-  allocator_type d_alloc;
   container_type d_container;
 };
 

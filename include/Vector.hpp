@@ -433,7 +433,7 @@ class vector {
   vector &operator=(const vector &x) {
     if (&x == this) return *this;
     clear_and_dealloc_();
-    if (alloc_traits::propagate_on_container_move_assignment::value) {
+    if constexpr (alloc_traits::propagate_on_container_move_assignment::value) {
       d_allocator = x.d_allocator;
     }
     change_capacity_(x.size());
@@ -450,7 +450,7 @@ class vector {
       std::allocator_traits<Allocator>::is_always_equal::value) {
     clear();
     alloc_traits::deallocate(d_allocator, d_buffer_p, d_buffer_capacity);
-    if (alloc_traits::propagate_on_container_move_assignment::value) {
+    if constexpr (alloc_traits::propagate_on_container_move_assignment::value) {
       d_allocator = x.d_allocator;
       d_buffer_p = x.d_buffer_p;
       d_size = x.d_size;
@@ -755,7 +755,7 @@ class vector {
   void swap(vector &other) noexcept(
       alloc_traits::propagate_on_container_swap::value ||
       alloc_traits::is_always_equal::value) {
-    if (alloc_traits::propagate_on_container_swap::value) {
+    if constexpr (alloc_traits::propagate_on_container_swap::value) {
       std::swap(d_allocator, other.d_allocator);
     }
     std::swap(d_buffer_p, other.d_buffer_p);

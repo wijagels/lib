@@ -24,9 +24,6 @@ struct InsertReturnType {
 };
 }  // namespace detail
 
-static std::geometric_distribution<size_t> distrib;
-static std::random_device rd;
-
 template <typename T, class Compare = std::less<T>,
           class Allocator = std::allocator<T>>
 class skiplist {
@@ -598,7 +595,7 @@ class skiplist {
     auto pos = find_pos_(iterator{hint}, data);
     if (!pos.second) return pos;
 
-    size_t lvl = distrib(d_gen) + 1;
+    size_t lvl = d_distrib(d_gen) + 1;
     node_ptr node = allocate_node_(lvl, data);
     insert_node_(pos.first, node);
     return {iterator{node}, true};
@@ -612,7 +609,7 @@ class skiplist {
     auto pos = find_pos_(iterator{hint}, data);
     if (!pos.second) return pos;
 
-    size_t lvl = distrib(d_gen) + 1;
+    size_t lvl = d_distrib(d_gen) + 1;
     node_ptr node = allocate_node_(lvl, std::move(data));
     insert_node_(pos.first, node);
     return {iterator{node}, true};
@@ -629,7 +626,7 @@ class skiplist {
       ret.position = pos.first;
       return ret;
     }
-    size_t lvl = distrib(d_gen) + 1;
+    size_t lvl = d_distrib(d_gen) + 1;
     auto node = nh.release_();
     node->expand(lvl);
     insert_node_(pos.first, node);
@@ -640,7 +637,7 @@ class skiplist {
 
   iterator insert(const_iterator hint, node_type &&nh) {
     if (!nh) return end();
-    size_t lvl = distrib(d_gen) + 1;
+    size_t lvl = d_distrib(d_gen) + 1;
     auto pos = find_pos_(iterator{hint}, nh.d_node_p->d_data);
     if (!pos.second) {
       return pos.first;
@@ -658,7 +655,7 @@ class skiplist {
     if (!pos.second) {
       return pos;
     }
-    size_t lvl = distrib(d_gen) + 1;
+    size_t lvl = d_distrib(d_gen) + 1;
     node_ptr node = allocate_node_(lvl, std::move(data));
     insert_node_(pos.first, node);
     return {iterator{node}, true};
@@ -671,7 +668,7 @@ class skiplist {
     if (!pos.second) {
       return pos.first;
     }
-    size_t lvl = distrib(d_gen) + 1;
+    size_t lvl = d_distrib(d_gen) + 1;
     node_ptr node = allocate_node_(lvl, std::move(data));
     insert_node_(pos.first, node);
     return iterator{node};
@@ -786,7 +783,9 @@ class skiplist {
   allocator_type d_alloc;
   node_allocator_type d_node_alloc;
   skip_node_base d_head;
-  std::mt19937 d_gen{rd()};
+  std::random_device d_rd{};
+  std::geometric_distribution<size_t> d_distrib{};
+  std::mt19937 d_gen{d_rd()};
 };
 
 template <class T, class Compare, class Alloc>

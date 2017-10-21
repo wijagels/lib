@@ -3,6 +3,7 @@
 #define INCLUDE_LIST_HPP_
 #include <cassert>
 #include <cstddef>
+#include <initializer_list>
 #include <iterator>
 #include <limits>
 #include <memory>
@@ -83,9 +84,9 @@ class list {
   using size_type = size_t;
   using reference = value_type &;
   using const_reference = const value_type &;
-  using pointer = typename std::allocator_traits<Allocator>::pointer;
+  using pointer = typename std::allocator_traits<allocator_type>::pointer;
   using const_pointer =
-      typename std::allocator_traits<Allocator>::const_pointer;
+      typename std::allocator_traits<allocator_type>::const_pointer;
   using reverse_iterator = std::reverse_iterator<iterator>;
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
@@ -100,9 +101,9 @@ class list {
     using difference_type = size_t;
     using reference = value_type &;
     using const_reference = const value_type &;
-    using pointer = typename std::allocator_traits<Allocator>::pointer;
+    using pointer = typename std::allocator_traits<allocator_type>::pointer;
     using const_pointer =
-        typename std::allocator_traits<Allocator>::const_pointer;
+        typename std::allocator_traits<allocator_type>::const_pointer;
     using iterator_category = std::bidirectional_iterator_tag;
 
     explicit iterator(Node_Base *node) : d_node_p{node} {}
@@ -294,11 +295,11 @@ class list {
   }
 
   list &operator=(list &&other) noexcept(
-      std::allocator_traits<Allocator>::is_always_equal::value) {
+      std::allocator_traits<allocator_type>::is_always_equal::value) {
     if (this == &other) return *this;  // Not sure if this is possible
     clear();
-    if (std::allocator_traits<
-            allocator_type>::propagate_on_container_move_assignment::value) {
+    if constexpr (std::allocator_traits<allocator_type>::
+                      propagate_on_container_move_assignment::value) {
       d_alloc = std::move(other.d_alloc);
       splice(cend(), std::move(other));
     } else {
@@ -407,7 +408,6 @@ class list {
 
  public:
   iterator insert(const iterator &pos, const_reference data) {
-    using std::allocator_traits;
     Node *node = node_alloc_traits::allocate(d_node_alloc, 1);
     node_alloc_traits::construct(d_node_alloc, node, data);
     link_(pos.d_node_p->d_prev_p, node, pos.d_node_p);
@@ -465,11 +465,11 @@ class list {
   }
 
   void swap(list &other) noexcept {
-    if (std::allocator_traits<
-            allocator_type>::propagate_on_container_swap::value) {
+    if constexpr (std::allocator_traits<
+                      allocator_type>::propagate_on_container_swap::value) {
       std::swap(d_alloc, other.d_alloc);
     }
-    if (node_alloc_traits::propagate_on_container_swap::value) {
+    if constexpr (node_alloc_traits::propagate_on_container_swap::value) {
       std::swap(d_node_alloc, other.d_node_alloc);
     }
     std::swap(d_head, other.d_head);
