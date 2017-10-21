@@ -115,18 +115,18 @@ struct StrictStruct {
   StrictStruct() = delete;
   StrictStruct(const StrictStruct &) = delete;
   StrictStruct(StrictStruct &&) = delete;
-  StrictStruct(int a, double b) : a_{a}, b_{b} {}
+  StrictStruct(int a, double b) : d_a{a}, d_b{b} {}
   ~StrictStruct() = default;
   StrictStruct &operator=(const StrictStruct &) = delete;
   StrictStruct &operator=(StrictStruct &&) = delete;
   friend bool operator==(const StrictStruct &lhs, const StrictStruct &rhs) {
-    return lhs.a_ == rhs.a_ && lhs.b_ == rhs.b_;
+    return lhs.d_a == rhs.d_a && lhs.d_b == rhs.d_b;
   }
   friend bool operator<(const StrictStruct &lhs, const StrictStruct &rhs) {
-    return lhs.a_ < rhs.a_;
+    return lhs.d_a < rhs.d_a;
   }
-  int a_;
-  double b_;
+  int d_a;
+  double d_b;
 };
 
 TEST(ListTest, emplace_class_test) {  // NOLINT

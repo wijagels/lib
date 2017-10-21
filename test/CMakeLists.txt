@@ -27,6 +27,7 @@ else()
   set_target_properties(
       map_test
       list_test
+      decorator_test
       skiplist_test
       point_test
       vector_test

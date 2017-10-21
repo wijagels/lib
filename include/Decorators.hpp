@@ -5,75 +5,123 @@
 #include <functional>
 #include <iostream>
 
-template <typename, typename>
-struct Decorator;
+template <typename T, typename U>
+struct is_similar
+    : std::is_same<std::remove_reference_t<T>, std::remove_reference_t<U>> {};
 
-struct DecoratorHook {
-  virtual void pre() {}
-  virtual void post() {}
-};
+template <class T, class U>
+inline constexpr bool is_similar_v = is_similar<T, U>::value;
+
+template <typename, typename>
+class Decorator;
 
 template <typename H, typename R, typename... Args>
-struct Decorator<R(Args...), H> {
-  Decorator(std::function<R(Args...)> f, const H &hook)
-      : f_{std::move(f)}, hook_{hook} {}
+class Decorator<R(Args...), H> {
+ public:
+  using function_type = R(Args...);
 
-  R operator()(Args... args) {
-    // std::chrono::time_point<std::chrono::system_clock> start, end;
-    // start = std::chrono::system_clock::now();
-    hook_.pre();
-    R ret = f_(args...);
-    hook_.post();
-    // end = std::chrono::system_clock::now();
-    // std::chrono::nanoseconds elapsed_nanos =
-    //     std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
-    // std::cout << "Execution took " << elapsed_nanos.count() << "ns"
-    //           << std::endl;
-    return ret;
+  constexpr Decorator() = default;
+
+  constexpr Decorator(std::function<function_type> f, const H &hook)
+      : d_function{std::move(f)}, d_hook{std::move(hook)} {}
+
+  constexpr auto operator()(Args... args) {
+    d_hook.pre(args...);
+    /* Decorated function does not return */
+    if constexpr (std::is_void_v<R>) {
+      d_function(std::forward<Args>(args)...);
+      if constexpr (!std::is_void_v<decltype(d_hook.post())>) {
+        return std::make_tuple(d_hook.post());
+      } else {
+        d_hook.post();
+      }
+    } else {
+      R ret = d_function(std::forward<Args>(args)...);
+      if constexpr (!std::is_void_v<decltype(d_hook.post(ret))>) {
+        return std::make_tuple(d_hook.post(ret), ret);
+      } else {  // Required else because of return type deduction
+        d_hook.post(ret);
+        return ret;
+      }
+    }
   }
-  std::function<R(Args...)> f_;
 
-  H hook_;
+  function_type *target() {
+    return *d_function.template target<function_type *>();
+  }
+
+ private:
+  std::function<function_type> d_function;
+  H d_hook;
 };
 
-/*
- * Partial specialization for void return values.
- */
-template <typename H, typename... Args>
-struct Decorator<void(Args...), H> {
-  Decorator(std::function<void(Args...)> f, const H &hook)
-      : f_{std::move(f)}, hook_{hook} {}
-
-  void operator()(Args... args) {
-    hook_.pre();
-    f_(args...);
-    hook_.post();
-  }
-  std::function<void(Args...)> f_;
-
-  H hook_;
-};
-
+template <typename Ret, typename... Args>
 struct TimerHook {
   TimerHook() = default;
 
-  void pre() { start_time_ = std::chrono::system_clock::now(); }
+  auto pre(Args...) {
+    d_start_time = std::chrono::system_clock::now();
+  }
 
-  void post() {
+  template <typename Ret2,
+            typename = std::enable_if_t<is_similar_v<Ret2, Ret> &&
+                                        !std::is_void_v<Ret2>>>
+  auto post(Ret2 &&) {
     auto end = std::chrono::system_clock::now();
     std::chrono::nanoseconds elapsed_nanos =
-        std::chrono::duration_cast<std::chrono::nanoseconds>(end - start_time_);
+        std::chrono::duration_cast<std::chrono::nanoseconds>(end -
+                                                             d_start_time);
     std::cout << "Execution took " << elapsed_nanos.count() << "ns"
               << std::endl;
   }
 
-  std::chrono::time_point<std::chrono::system_clock> start_time_;
+  auto post() {
+    auto end = std::chrono::system_clock::now();
+    std::chrono::nanoseconds elapsed_nanos =
+        std::chrono::duration_cast<std::chrono::nanoseconds>(end -
+                                                             d_start_time);
+    std::cout << "Execution took " << elapsed_nanos.count() << "ns"
+              << std::endl;
+  }
+
+  std::chrono::time_point<std::chrono::system_clock> d_start_time;
 };
 
-template <typename R, typename... Args>
-Decorator<R(Args...), TimerHook> makeDecorator(R (*f)(Args...)) {
-  return Decorator<R(Args...), TimerHook>{std::function<R(Args...)>(f),
-                                          TimerHook{}};
+template <typename Pre, typename Post, typename Ret, typename... Args>
+struct StatelessHook {
+  constexpr StatelessHook(Pre pre, Post post) : d_pre{pre}, d_post{post} {}
+
+  constexpr auto pre(Args... args) {
+    d_pre(std::forward<Args>(args)...);
+  }
+
+  template <typename Ret2,
+            typename = std::enable_if_t<is_similar_v<Ret2, Ret> &&
+                                        !std::is_void_v<Ret2>>>
+  constexpr auto post(Ret2 &&returned) {
+    return d_post(std::forward<Ret2>(returned));
+  }
+
+  constexpr auto post() {
+    return d_post();
+  }
+
+  Pre d_pre;
+  Post d_post;
+};
+
+/**
+ * Allow deduction of template parameters while constructing a decorator
+ */
+template <typename Hook, typename R, typename... Args>
+constexpr auto make_decorator(Hook hook, R (*f)(Args...)) {
+  return Decorator<R(Args...), Hook>{f, std::move(hook)};
 }
+
+template <typename Hook, typename Callable, typename R, typename... Args, typename = std::enable_if_t<std::is_invocable_r_v<R, Callable, Args...>>>
+constexpr auto make_decorator(Hook hook, Callable f) {
+  return Decorator<R(Args...), Hook>{std::function<R(Args...)>{f}, std::move(hook)};
+}
+
 
 #endif  // INCLUDE_DECORATORS_HPP_
