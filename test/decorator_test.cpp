@@ -3,9 +3,9 @@
 #include <cstdlib>
 #include <iostream>
 
-void sleeper(int);
+void sleeper(long);
 
-void sleeper(int k) {
+void sleeper(long k) {
   std::cout << "sleeping" << std::endl;
   timespec ts{0, k};
   nanosleep(&ts, nullptr);
@@ -22,9 +22,9 @@ struct AddFunctor {
 
 TEST(decorator_test, timer_test) {  // NOLINT
   TimerHook<decltype(add(int{}, int{})), int, int> add_hook;
-  TimerHook<decltype(sleeper(int{})), int> sleeper_hook;
-  make_decorator(sleeper_hook, sleeper)(1);
-  auto [x, y] = make_decorator(add_hook, add<int, int>)(1, 3);
+  TimerHook<decltype(sleeper(long{})), long> sleeper_hook;
+  make_decorator(sleeper_hook, sleeper)(1l);
+  auto[x, y] = make_decorator(add_hook, add<int, int>)(1, 3);
   auto x_is_none = std::is_same_v<decltype(x), None>;
   EXPECT_TRUE(x_is_none);
   EXPECT_EQ(make_decorator(add_hook, add<int, int>).target()(3, 2), 5);
@@ -53,13 +53,24 @@ TEST(decorator_test, stateless) {  // NOLINT
 
 TEST(decorator_test, void_function) {  // NOLINT
   auto wrapme = []() {};
-  auto f1 = []() { };
-  auto f2 = []() { };
+  auto f1 = []() {};
+  auto f2 = []() {};
   StatelessHook<decltype(f1), decltype(f2), void> hook{f1, f2};
-  auto decorated = make_decorator(hook, wrapme);
-  auto [decret, ret] = decorated();
+  auto decorated = make_decorator<decltype(hook), decltype(wrapme), void>(hook, wrapme);
+  auto[decret, ret] = decorated();
   auto x = std::is_same_v<decltype(decret), None>;
   auto y = std::is_same_v<decltype(ret), None>;
   EXPECT_TRUE(x);
   EXPECT_TRUE(y);
+}
+
+TEST(decorator_test, memoizer) {  // NOLINT
+  auto expensive_fn = [](long i) { sleeper(i*42);return 12; };
+  MemoizerHook<int, long> mem_hook;
+  auto decorated = make_decorator<decltype(mem_hook), decltype(expensive_fn), int, long>(mem_hook, expensive_fn);
+  for (long i = 0; i < 4; i++) {
+    for (int j = 0; j < 42; j++) {
+      decorated(i);
+    }
+  }
 }
