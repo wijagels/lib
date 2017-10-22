@@ -12,6 +12,8 @@ struct is_similar
 template <class T, class U>
 inline constexpr bool is_similar_v = is_similar<T, U>::value;
 
+struct None {};
+
 template <typename, typename>
 class Decorator;
 
@@ -31,9 +33,10 @@ class Decorator<R(Args...), H> {
     if constexpr (std::is_void_v<R>) {
       d_function(std::forward<Args>(args)...);
       if constexpr (!std::is_void_v<decltype(d_hook.post())>) {
-        return std::make_tuple(d_hook.post());
+        return std::make_tuple(d_hook.post(), None{});
       } else {
         d_hook.post();
+        return std::make_tuple(None{}, None{});
       }
     } else {
       R ret = d_function(std::forward<Args>(args)...);
@@ -41,7 +44,7 @@ class Decorator<R(Args...), H> {
         return std::make_tuple(d_hook.post(ret), ret);
       } else {  // Required else because of return type deduction
         d_hook.post(ret);
-        return ret;
+        return std::make_tuple(None{}, ret);
       }
     }
   }
@@ -107,13 +110,14 @@ struct StatelessHook {
 /**
  * Allow deduction of template parameters while constructing a decorator
  */
-template <typename Hook, typename R, typename... Args>
+template <typename Hook, typename R, typename... Args,
+          typename = std::enable_if_t<std::is_function_v<R(Args...)>>>
 constexpr auto make_decorator(Hook hook, R (*f)(Args...)) {
   return Decorator<R(Args...), Hook>{f, std::move(hook)};
 }
 
 template <
-    typename Hook, typename Callable, typename R, typename... Args,
+    typename Hook, typename Callable, typename R = void, typename... Args,
     typename = std::enable_if_t<std::is_invocable_r_v<R, Callable, Args...>>>
 constexpr auto make_decorator(Hook hook, Callable f) {
   return Decorator<R(Args...), Hook>{std::function<R(Args...)>{f},

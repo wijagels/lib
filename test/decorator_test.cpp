@@ -24,9 +24,11 @@ TEST(decorator_test, timer_test) {  // NOLINT
   TimerHook<decltype(add(int{}, int{})), int, int> add_hook;
   TimerHook<decltype(sleeper(int{})), int> sleeper_hook;
   make_decorator(sleeper_hook, sleeper)(1);
-  auto x = make_decorator(add_hook, add<int, int>)(1, 3);
+  auto [x, y] = make_decorator(add_hook, add<int, int>)(1, 3);
+  auto x_is_none = std::is_same_v<decltype(x), None>;
+  EXPECT_TRUE(x_is_none);
   EXPECT_EQ(make_decorator(add_hook, add<int, int>).target()(3, 2), 5);
-  EXPECT_EQ(x, 4);
+  EXPECT_EQ(y, 4);
 }
 
 TEST(decorator_test, functor) {  // NOLINT
@@ -47,4 +49,17 @@ TEST(decorator_test, stateless) {  // NOLINT
   auto decorated = make_decorator(hook, add<int, int>);
   auto[decret, ret] = decorated(1, 2);
   std::cout << decret << " " << ret << '\n';
+}
+
+TEST(decorator_test, void_function) {  // NOLINT
+  auto wrapme = []() {};
+  auto f1 = []() { };
+  auto f2 = []() { };
+  StatelessHook<decltype(f1), decltype(f2), void> hook{f1, f2};
+  auto decorated = make_decorator(hook, wrapme);
+  auto [decret, ret] = decorated();
+  auto x = std::is_same_v<decltype(decret), None>;
+  auto y = std::is_same_v<decltype(ret), None>;
+  EXPECT_TRUE(x);
+  EXPECT_TRUE(y);
 }
