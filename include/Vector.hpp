@@ -283,9 +283,13 @@ class vector {
     }
     pointer new_buf = alloc_traits::allocate(d_allocator, new_capacity);
     if (d_buffer_p) {
-      for (size_type i = 0; i < size(); ++i) {
-        alloc_traits::construct(d_allocator, &new_buf[i],
-                                std::move_if_noexcept(d_buffer_p[i]));
+      if constexpr (std::is_trivially_copyable_v<value_type>) {
+        std::memcpy(new_buf, d_buffer_p, size() * sizeof(value_type));
+      } else {
+        for (size_type i = 0; i < size(); ++i) {
+          alloc_traits::construct(d_allocator, &new_buf[i],
+                                  std::move_if_noexcept(d_buffer_p[i]));
+        }
       }
       destroy_all_();
       alloc_traits::deallocate(d_allocator, d_buffer_p, capacity());
@@ -317,8 +321,16 @@ class vector {
    * Utility to destroy every element in the current buffer
    */
   inline void destroy_all_() {
-    for (size_type i = 0; i < size(); ++i) {
-      alloc_traits::destroy(d_allocator, &d_buffer_p[i]);
+    if constexpr (!std::is_trivially_destructible_v<value_type>) {
+      for (size_type i = 0; i < size(); ++i) {
+        destroy_one_(&d_buffer_p[i]);
+      }
+    }
+  }
+
+  inline void destroy_one_(pointer ptr) {
+    if constexpr (!std::is_trivially_destructible_v<value_type>) {
+      alloc_traits::destroy(d_allocator, ptr);
     }
   }
 
@@ -557,7 +569,7 @@ class vector {
   void resize(size_type sz, const T &c) {
     if (sz < d_size) {
       for (size_type i = sz; i < d_size; ++i) {
-        alloc_traits::destroy(d_allocator, &d_buffer_p[i]);
+        destroy_one(&d_buffer_p[i]);
       }
       return;
     }
@@ -648,7 +660,7 @@ class vector {
   }
 
   void pop_back() {
-    alloc_traits::destroy(d_allocator, &back());
+    destroy_one_(&back());
     --d_size;
   }
 
@@ -662,7 +674,7 @@ class vector {
     iterator pos = begin() + idx;
     auto end_iter = end();
     shift_after_by_(pos, 1);  // Handles size change
-    if (pos != end_iter) alloc_traits::destroy(d_allocator, &*pos);
+    if (pos != end_iter) destroy_one_(&*pos);
     alloc_traits::construct(d_allocator, &*pos, std::forward<Args>(args)...);
     return pos;
   }
@@ -683,10 +695,10 @@ class vector {
     iterator pos = begin() + idx;
     auto end_iter = end();
     shift_after_by_(pos, n);  // Handles size change
-    if (pos != end_iter) alloc_traits::destroy(d_allocator, &*pos);
+    if (pos != end_iter) destroy_one_(&*pos);
     for (; n > 0; --n) {
       auto dest = pos + n;
-      if (dest < end_iter) alloc_traits::destroy(d_allocator, &*dest);
+      if (dest < end_iter) destroy_one_(&*dest);
       alloc_traits::construct(d_allocator, &*dest, x);
     }
     return pos;
@@ -702,7 +714,7 @@ class vector {
     iterator pos = begin() + idx;
     auto end_iter = end();
     shift_after_by_(pos, n);  // Handles size change
-    if (pos != end_iter) alloc_traits::destroy(d_allocator, &*pos);
+    if (pos != end_iter) destroy_one_(&*pos);
     for (difference_type i = 0; first != last; ++first, ++i) {
       auto dest = pos + i;
       if (dest < end_iter)
@@ -719,7 +731,7 @@ class vector {
     auto pos = iterator{begin() + idx};
     auto end_iter = end();
     shift_after_by_(pos, il.size());  // Handles size change
-    if (pos != end_iter) alloc_traits::destroy(d_allocator, &*pos);
+    if (pos != end_iter) destroy_one_(&*pos);
     difference_type i = 0;
     for (auto &&el : il) {
       auto dest = pos + i;
@@ -746,7 +758,7 @@ class vector {
     }
     iterator end_it = end();
     for (; it != end_it; ++it) {
-      alloc_traits::destroy(d_allocator, &*it);
+      destroy_one_(&*it);
       --d_size;
     }
     return begin() + (last_it - cbegin());
