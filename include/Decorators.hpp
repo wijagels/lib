@@ -27,7 +27,7 @@ class Decorator<R(Args...), H> {
 
   constexpr Decorator() = default;
 
-  constexpr Decorator(std::function<function_type> f, const H &hook)
+  constexpr Decorator(std::function<function_type> f, H hook)
       : d_function{std::move(f)}, d_hook{std::move(hook)} {}
 
   constexpr auto operator()(Args... args) {
@@ -217,7 +217,8 @@ struct memoized_maker {
   template <typename... Args>
   constexpr auto operator()(Args...) {
     auto hook = MemoizerHook<R, Args...>{};
-    return make_decorator<decltype(hook), decltype(d_f), R, Args...>(std::move(hook), std::move(d_f));
+    return make_decorator<decltype(hook), decltype(d_f), R, Args...>(
+        std::move(hook), std::move(d_f));
   }
 };
 
@@ -225,7 +226,7 @@ template <typename Callable>
 constexpr auto make_memoized(Callable f) {
   using traits = function_traits<Callable>;
   memoized_maker<Callable, typename traits::return_type> mm{f};
-  auto tup = typename traits::function_traits::args_type{};
+  auto tup = typename traits::args_type{};
   return std::apply(std::move(mm), tup);
 }
 
