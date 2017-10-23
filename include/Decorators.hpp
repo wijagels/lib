@@ -34,7 +34,7 @@ class Decorator<R(Args...), H> {
     auto arguments = std::make_tuple(args...);
     if constexpr (!std::is_void_v<decltype(d_hook.pre(args...))>) {
       std::optional<R> candidate = d_hook.pre(args...);
-      if (candidate) return std::make_tuple(None{}, candidate.value());
+      if (candidate) return std::make_pair(None{}, candidate.value());
     } else {
       d_hook.pre(args...);
     }
@@ -42,18 +42,18 @@ class Decorator<R(Args...), H> {
     if constexpr (std::is_void_v<R>) {
       d_function(std::forward<Args>(args)...);
       if constexpr (!std::is_void_v<decltype(d_hook.post(None{}, arguments))>) {
-        return std::make_tuple(d_hook.post(None{}, arguments), None{});
+        return std::make_pair(d_hook.post(None{}, arguments), None{});
       } else {  // Required else because of return type deduction
         d_hook.post(None{}, arguments);
-        return std::make_tuple(None{}, None{});
+        return std::make_pair(None{}, None{});
       }
     } else {
       R ret = d_function(std::forward<Args>(args)...);
       if constexpr (!std::is_void_v<decltype(d_hook.post(ret, arguments))>) {
-        return std::make_tuple(d_hook.post(ret, arguments), ret);
+        return std::make_pair(d_hook.post(ret, arguments), ret);
       } else {
         d_hook.post(ret, arguments);
-        return std::make_tuple(None{}, ret);
+        return std::make_pair(None{}, ret);
       }
     }
   }
@@ -99,7 +99,7 @@ struct TimerHook {
 
 template <typename Ret, typename... Args>
 struct MemoizerHook {
-  MemoizerHook() = default;
+  constexpr MemoizerHook() = default;
 
   std::optional<Ret> pre(Args... args) {
     auto iter = d_cache.find(std::make_tuple(args...));
@@ -157,6 +157,29 @@ struct StatelessHook {
   Post d_post;
 };
 
+/* https://stackoverflow.com/a/39717241/1666415 */
+template <typename T, typename = void>
+struct function_traits;
+
+template <typename R, typename... A>
+struct function_traits<R (*)(A...)> {
+  using return_type = R;
+  using class_type = void;
+  using args_type = std::tuple<A...>;
+};
+
+template <typename R, typename C, typename... A>
+struct function_traits<R (C::*)(A...) const>  // const
+{
+  using return_type = R;
+  using class_type = C;
+  using args_type = std::tuple<A...>;
+};
+
+template <typename T>
+struct function_traits<T, std::void_t<decltype(&T::operator())>>
+    : public function_traits<decltype(&T::operator())> {};
+
 /**
  * Allow deduction of template parameters while constructing a decorator
  */
@@ -172,6 +195,44 @@ template <
 constexpr auto make_decorator(Hook hook, Callable f) {
   return Decorator<R(Args...), Hook>{std::function<R(Args...)>{f},
                                      std::move(hook)};
+}
+
+template <typename Hook, typename R, typename... Args>
+constexpr auto make_decorator(Hook hook, std::function<R(Args...)> f) {
+  return Decorator<R(Args...), Hook>{std::move(f), std::move(hook)};
+}
+
+template <typename R, typename... Args>
+constexpr auto make_memoized(R (*f)(Args...)) {
+  auto hook = MemoizerHook<R, Args...>{};
+  return make_decorator(std::move(hook), f);
+}
+
+template <typename Callable, typename R>
+struct memoized_maker {
+  Callable d_f;
+
+  constexpr memoized_maker(Callable f) : d_f{std::move(f)} {}
+
+  template <typename... Args>
+  constexpr auto operator()(Args...) {
+    auto hook = MemoizerHook<R, Args...>{};
+    return make_decorator<decltype(hook), decltype(d_f), R, Args...>(std::move(hook), std::move(d_f));
+  }
+};
+
+template <typename Callable>
+constexpr auto make_memoized(Callable f) {
+  using traits = function_traits<Callable>;
+  memoized_maker<Callable, typename traits::return_type> mm{f};
+  auto tup = typename traits::function_traits::args_type{};
+  return std::apply(std::move(mm), tup);
+}
+
+template <typename R, typename... Args>
+constexpr auto make_memoized(std::function<R(Args...)> f) {
+  auto hook = MemoizerHook<R, Args...>{};
+  return make_decorator(std::move(hook), std::move(f));
 }
 
 #endif  // INCLUDE_DECORATORS_HPP_
