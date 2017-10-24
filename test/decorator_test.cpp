@@ -33,9 +33,7 @@ TEST(decorator_test, timer_test) {  // NOLINT
 
 TEST(decorator_test, functor) {  // NOLINT
   TimerHook<std::invoke_result_t<AddFunctor, int, int>, int, int> add_hook;
-  auto decorated =
-      make_decorator<decltype(add_hook), AddFunctor, int, int, int>(
-          add_hook, AddFunctor{});
+  auto decorated = make_decorator(add_hook, AddFunctor{});
   decorated(5, 6);
 }
 
@@ -52,12 +50,11 @@ TEST(decorator_test, stateless) {  // NOLINT
 }
 
 TEST(decorator_test, void_function) {  // NOLINT
-  auto wrapme = []() {};
-  auto f1 = []() {};
-  auto f2 = []() {};
-  StatelessHook<decltype(f1), decltype(f2), void> hook{f1, f2};
-  auto decorated =
-      make_decorator<decltype(hook), decltype(wrapme), void>(hook, wrapme);
+  constexpr auto wrapme = []() {};
+  constexpr auto f1 = []() {};
+  constexpr auto f2 = []() {};
+  constexpr StatelessHook<decltype(f1), decltype(f2), void> hook{f1, f2};
+  auto decorated = make_decorator(hook, wrapme);
   auto[decret, ret] = decorated();
   auto x = std::is_same_v<decltype(decret), None>;
   auto y = std::is_same_v<decltype(ret), None>;
@@ -65,11 +62,11 @@ TEST(decorator_test, void_function) {  // NOLINT
   EXPECT_TRUE(y);
 }
 
-std::function<std::tuple<None, int>(int)> decorated_fib;
+std::function<std::pair<None, int>(int)> decorated_fib;
 
 int fib(int n) {
   if (n < 2) return 1;
-  return std::get<1>(decorated_fib(n - 2)) + std::get<1>(decorated_fib(n - 1));
+  return decorated_fib(n - 2).second + decorated_fib(n - 1).second;
 }
 
 TEST(decorator_test, memoizer) {  // NOLINT
@@ -78,10 +75,7 @@ TEST(decorator_test, memoizer) {  // NOLINT
       sleeper(i * 42);
       return 12;
     };
-    MemoizerHook<int, long> mem_hook;
-    auto decorated =
-        make_decorator<decltype(mem_hook), decltype(expensive_fn), int, long>(
-            mem_hook, expensive_fn);
+    auto decorated = make_memoized(expensive_fn);
     for (long i = 0; i < 4; i++) {
       for (int j = 0; j < 42; j++) {
         decorated(i);
@@ -93,7 +87,7 @@ TEST(decorator_test, memoizer) {  // NOLINT
     decorated_fib(58);
   }
   {
-    auto fn = [] (int i, int j) { return i*i*i*j; };
+    auto fn = [](int i, int j) { return i * i * i * j; };
     auto decorated = make_memoized(fn);
     auto x = decorated(2, 3).second;
     EXPECT_EQ(x, 24);

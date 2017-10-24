@@ -21,14 +21,14 @@ template <typename, typename>
 class Decorator;
 
 template <typename H, typename R, typename... Args>
-class Decorator<R(Args...), H> {
+class Decorator<H, R(Args...)> {
  public:
   using function_type = R(Args...);
 
   constexpr Decorator() = default;
 
-  constexpr Decorator(std::function<function_type> f, H hook)
-      : d_function{std::move(f)}, d_hook{std::move(hook)} {}
+  constexpr Decorator(H hook, std::function<function_type> f) noexcept
+      : d_hook{std::move(hook)}, d_function{std::move(f)} {}
 
   constexpr auto operator()(Args... args) {
     auto arguments = std::make_tuple(args...);
@@ -63,8 +63,8 @@ class Decorator<R(Args...), H> {
   }
 
  private:
-  std::function<function_type> d_function;
   H d_hook;
+  std::function<function_type> d_function;
 };
 
 template <typename Ret, typename... Args>
@@ -140,21 +140,25 @@ struct MemoizerHook {
 
 template <typename Pre, typename Post, typename Ret, typename... Args>
 struct StatelessHook {
-  constexpr StatelessHook(Pre pre, Post post) : d_pre{pre}, d_post{post} {}
+  constexpr StatelessHook(Pre pre, Post post) noexcept
+      : d_pre{std::move_if_noexcept(pre)},
+        d_post{std::move_if_noexcept(post)} {}
 
-  constexpr auto pre(Args... args) { d_pre(args...); }
+  constexpr auto pre(Args... args) const { d_pre(args...); }
 
   template <typename Ret2,
             typename = std::enable_if_t<is_similar_v<Ret2, Ret> &&
                                         !std::is_void_v<Ret2>>>
-  constexpr auto post(Ret2 &&returned, const std::tuple<Args...> &) {
+  constexpr auto post(Ret2 &&returned, const std::tuple<Args...> &) const {
     return d_post(std::forward<Ret2>(returned));
   }
 
-  constexpr auto post(None, const std::tuple<Args...> &) { return d_post(); }
+  constexpr auto post(None, const std::tuple<Args...> &) const {
+    return d_post();
+  }
 
-  Pre d_pre;
-  Post d_post;
+  const Pre d_pre;
+  const Post d_post;
 };
 
 /* https://stackoverflow.com/a/39717241/1666415 */
@@ -169,8 +173,14 @@ struct function_traits<R (*)(A...)> {
 };
 
 template <typename R, typename C, typename... A>
-struct function_traits<R (C::*)(A...) const>  // const
-{
+struct function_traits<R (C::*)(A...)> {
+  using return_type = R;
+  using class_type = C;
+  using args_type = std::tuple<A...>;
+};
+
+template <typename R, typename C, typename... A>
+struct function_traits<R (C::*)(A...) const> {
   using return_type = R;
   using class_type = C;
   using args_type = std::tuple<A...>;
@@ -183,27 +193,51 @@ struct function_traits<T, std::void_t<decltype(&T::operator())>>
 /**
  * Allow deduction of template parameters while constructing a decorator
  */
+template <typename Hook, typename Callable, typename R>
+struct decorator_maker {
+  Hook d_h;
+  Callable d_f;
+
+  constexpr decorator_maker(Hook h, Callable f) noexcept
+      : d_h{std::move_if_noexcept(h)}, d_f{std::move_if_noexcept(f)} {}
+
+  template <typename... Args, typename = std::enable_if_t<
+                                  std::is_invocable_r_v<R, Callable, Args...>>>
+  constexpr auto operator()(Args...) noexcept {
+    return Decorator<decltype(d_h), R(Args...)>(std::move(d_h), std::move(d_f));
+  }
+};
+
+template <typename Hook, typename Callable>
+constexpr auto make_decorator(Hook hook, Callable f) noexcept {
+  using traits = function_traits<Callable>;
+  constexpr auto tup = typename traits::args_type{};
+  decorator_maker<Hook, Callable, typename traits::return_type> maker{
+      std::move(hook), std::move(f)};
+  return std::apply(std::move(maker), tup);
+}
+
 template <typename Hook, typename R, typename... Args,
           typename = std::enable_if_t<std::is_function_v<R(Args...)>>>
-constexpr auto make_decorator(Hook hook, R (*f)(Args...)) {
-  return Decorator<R(Args...), Hook>{f, std::move(hook)};
+constexpr auto make_decorator(Hook hook, R (*f)(Args...)) noexcept {
+  return Decorator<Hook, R(Args...)>{std::move(hook), f};
 }
 
 template <
     typename Hook, typename Callable, typename R, typename... Args,
     typename = std::enable_if_t<std::is_invocable_r_v<R, Callable, Args...>>>
-constexpr auto make_decorator(Hook hook, Callable f) {
-  return Decorator<R(Args...), Hook>{std::function<R(Args...)>{f},
-                                     std::move(hook)};
+constexpr auto make_decorator(Hook hook, Callable f) noexcept {
+  return Decorator<Hook, R(Args...)>{std::move(hook),
+                                     std::function<R(Args...)>{f}};
 }
 
 template <typename Hook, typename R, typename... Args>
-constexpr auto make_decorator(Hook hook, std::function<R(Args...)> f) {
-  return Decorator<R(Args...), Hook>{std::move(f), std::move(hook)};
+constexpr auto make_decorator(Hook hook, std::function<R(Args...)> f) noexcept {
+  return Decorator<Hook, R(Args...)>{std::move(hook), std::move(f)};
 }
 
 template <typename R, typename... Args>
-constexpr auto make_memoized(R (*f)(Args...)) {
+constexpr auto make_memoized(R (*f)(Args...)) noexcept {
   auto hook = MemoizerHook<R, Args...>{};
   return make_decorator(std::move(hook), f);
 }
@@ -212,10 +246,10 @@ template <typename Callable, typename R>
 struct memoized_maker {
   Callable d_f;
 
-  constexpr memoized_maker(Callable f) : d_f{std::move(f)} {}
+  constexpr memoized_maker(Callable f) noexcept : d_f{std::move(f)} {}
 
   template <typename... Args>
-  constexpr auto operator()(Args...) {
+  constexpr auto operator()(Args...) noexcept {
     auto hook = MemoizerHook<R, Args...>{};
     return make_decorator<decltype(hook), decltype(d_f), R, Args...>(
         std::move(hook), std::move(d_f));
@@ -223,7 +257,7 @@ struct memoized_maker {
 };
 
 template <typename Callable>
-constexpr auto make_memoized(Callable f) {
+constexpr auto make_memoized(Callable f) noexcept {
   using traits = function_traits<Callable>;
   memoized_maker<Callable, typename traits::return_type> mm{f};
   auto tup = typename traits::args_type{};
@@ -231,7 +265,7 @@ constexpr auto make_memoized(Callable f) {
 }
 
 template <typename R, typename... Args>
-constexpr auto make_memoized(std::function<R(Args...)> f) {
+constexpr auto make_memoized(std::function<R(Args...)> f) noexcept {
   auto hook = MemoizerHook<R, Args...>{};
   return make_decorator(std::move(hook), std::move(f));
 }
