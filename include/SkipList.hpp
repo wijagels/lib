@@ -1,11 +1,13 @@
 // Copyright 2017 William Jagels
 #ifndef INCLUDE_SKIPLIST_HPP_
 #define INCLUDE_SKIPLIST_HPP_
+#include <boost/container/small_vector.hpp>
 #include <cassert>
 #include <functional>
 #include <iterator>
 #include <memory>
 #include <random>
+#include <stack>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -27,81 +29,58 @@ struct InsertReturnType {
 template <typename T, class Compare = std::less<T>,
           class Allocator = std::allocator<T>>
 class skiplist {
-  struct skip_node_base {
-    explicit skip_node_base(size_t level) noexcept
-        : d_prevs{level, this}, d_nexts{level, this} {}
-
-    skip_node_base(std::vector<skip_node_base *> prevs,
-                   std::vector<skip_node_base *> nexts) noexcept
-        : d_prevs{prevs}, d_nexts{nexts} {}
-
-    skip_node_base(const skip_node_base &other) = default;
-
-    skip_node_base(skip_node_base &&other) noexcept
-        : d_prevs{std::move(other.d_prevs)}, d_nexts{std::move(other.d_nexts)} {
-      other.d_nexts = {&other};
-      other.d_prevs = {&other};
-    }
-
-    ~skip_node_base() = default;
-
-    skip_node_base &operator=(const skip_node_base &other) = default;
-
-    skip_node_base &operator=(skip_node_base &&other) noexcept {
-      if (&other == this) return *this;
-      d_prevs = std::move(other.d_prevs);
-      d_nexts = std::move(other.d_nexts);
-      other.d_nexts = {&other};
-      other.d_prevs = {&other};
-      return *this;
-    }
-
-    size_t links() const noexcept { return d_prevs.size(); }
-
-    inline void expand(size_t size) {
-      if (links() < size) {
-        d_prevs.resize(size, this);
-        d_nexts.resize(size, this);
-      }
-    }
-
-    friend void swap(skip_node_base &lhs, skip_node_base &rhs) noexcept {
-      std::swap(std::move(lhs.d_prevs), std::move(rhs.d_prevs));
-      std::swap(std::move(lhs.d_nexts), std::move(rhs.d_nexts));
-    }
-
-    std::vector<skip_node_base *> d_prevs, d_nexts;
-  };
-
-  struct skip_node : public skip_node_base {
-    skip_node(std::vector<skip_node_base *> prevs,
-              std::vector<skip_node_base *> nexts, const T &data)
-        : skip_node_base{prevs, nexts}, d_data{data} {}
-
-    explicit skip_node(size_t level, const T &data)
-        : skip_node_base{level}, d_data{data} {}
-
-    explicit skip_node(size_t level, T &&data)
-        : skip_node_base{level}, d_data{std::move(data)} {}
+#pragma pack(push, 1)
+  struct skip_node {
+    explicit skip_node(size_t level)
+        : d_data{}, d_skips{level, std::pair{this, this}} {}
 
     template <typename... Args>
     explicit skip_node(size_t level, Args &&... args)
-        : skip_node_base{level}, d_data{std::forward<Args>(args)...} {}
+        : d_data{std::in_place, std::forward<Args>(args)...},
+          d_skips{level, std::pair{this, this}} {}
 
-    friend void swap(skip_node &lhs, skip_node &rhs) noexcept {
-      std::swap(lhs.d_data, rhs.d_data);
-      std::swap(lhs.d_prevs, rhs.d_prevs);
-      std::swap(lhs.d_nexts, rhs.d_nexts);
+    skip_node(const skip_node &other) = default;
+
+    skip_node(skip_node &&other) noexcept
+        : d_skips{std::move(other.d_skips)}, d_data{std::move(other.d_data)} {
+      other.d_skips = {std::pair{&other, &other}};
     }
 
-    T d_data;
+    ~skip_node() = default;
+
+    skip_node &operator=(const skip_node &other) = default;
+
+    skip_node &operator=(skip_node &&other) noexcept {
+      if (&other == this) return *this;
+      d_skips = std::move(other.d_skips);
+      other.d_skips = {std::pair{&other, &other}};
+      return *this;
+    }
+
+    size_t links() const noexcept { return d_skips.size(); }
+
+    inline void expand(size_t size) {
+      if (links() < size) {
+        d_skips.resize(size, std::pair{this, this});
+      }
+    }
+
+    friend void swap(skip_node &lhs, skip_node &rhs) noexcept {
+      std::swap(lhs.d_skips, rhs.d_skips);
+      std::swap(lhs.d_data, rhs.d_data);
+    }
+
+    std::optional<T> d_data;
+    boost::container::small_vector<std::pair<skip_node *, skip_node *>, 4>
+        d_skips;
   };
+#pragma pack(pop)
 
  public:
   class const_iterator;
   class iterator {
     friend skiplist;
-    skip_node_base *d_node_p;
+    skip_node *d_node_p;
     size_t d_level = 0;
 
    public:
@@ -115,59 +94,57 @@ class skiplist {
         typename std::allocator_traits<Allocator>::const_pointer;
     using iterator_category = std::bidirectional_iterator_tag;
 
-    explicit iterator(skip_node_base *node, size_t level = 0)
+    constexpr explicit iterator(skip_node *node, size_t level = 0)
         : d_node_p{node}, d_level{level} {}
 
    private:
-    explicit iterator(const const_iterator &other)
+    constexpr explicit iterator(const const_iterator &other)
         : iterator{other.un_const()} {}
 
    public:
     iterator &operator++() {
-      d_node_p = d_node_p->d_nexts[d_level];
+      d_node_p = d_node_p->d_skips[d_level].second;
       return *this;
     }
 
     iterator operator++(int) {
-      auto ret = iterator{*this};
-      d_node_p = d_node_p->d_nexts[d_level];
+      iterator ret{*this};
+      d_node_p = d_node_p->d_skips[d_level].second;
       return ret;
     }
 
     iterator &operator--() {
-      d_node_p = d_node_p->d_prevs[d_level];
+      d_node_p = d_node_p->d_skips[d_level].first;
       return *this;
     }
 
     iterator operator--(int) {
-      auto ret = iterator{*this};
-      d_node_p = d_node_p->d_prevs[d_level];
+      iterator ret{*this};
+      d_node_p = d_node_p->d_skips[d_level].first;
       return ret;
     }
 
-    iterator &down() {
+   private:
+    constexpr iterator &down() {
       --d_level;
       return *this;
     }
 
-    iterator &up() {
-      if (d_level + 1 < d_node_p->links()) ++d_level;
+    constexpr iterator &up() {
+      ++d_level;
       return *this;
     }
 
-    reference operator*() const {
-      return static_cast<skip_node *>(d_node_p)->d_data;
-    }
+   public:
+    reference operator*() const { return *d_node_p->d_data; }
 
-    pointer operator->() const {
-      return &(static_cast<skip_node *>(d_node_p)->d_data);
-    }
+    pointer operator->() const { return d_node_p->d_data.operator->(); }
 
-    friend bool operator==(const iterator &lhs, const iterator &rhs) {
+    constexpr friend bool operator==(const iterator &lhs, const iterator &rhs) {
       return lhs.d_node_p == rhs.d_node_p;
     }
 
-    friend bool operator!=(const iterator &lhs, const iterator &rhs) {
+    constexpr friend bool operator!=(const iterator &lhs, const iterator &rhs) {
       return lhs.d_node_p != rhs.d_node_p;
     }
 
@@ -182,7 +159,7 @@ class skiplist {
   class const_iterator {
     friend skiplist;
     friend iterator;
-    const skip_node_base *d_node_p;
+    const skip_node *d_node_p;
     size_t d_level;
 
    public:
@@ -193,59 +170,57 @@ class skiplist {
     using pointer = typename std::allocator_traits<Allocator>::const_pointer;
     using iterator_category = std::bidirectional_iterator_tag;
 
-    explicit const_iterator(const skip_node_base *node, size_t level = 0)
+    constexpr explicit const_iterator(const skip_node *node, size_t level = 0)
         : d_node_p{node}, d_level{level} {}
 
-    const_iterator(const iterator &other)
+    constexpr const_iterator(const iterator &other)
         : d_node_p{other.d_node_p}, d_level{other.d_level} {}
 
     const_iterator &operator++() {
-      d_node_p = d_node_p->d_nexts[d_level];
+      d_node_p = d_node_p->d_skips[d_level].second;
       return *this;
     }
 
     const_iterator operator++(int) {
-      auto ret = const_iterator{*this};
-      d_node_p = d_node_p->d_nexts[d_level];
+      const_iterator ret{*this};
+      d_node_p = d_node_p->d_skips[d_level].second;
       return ret;
     }
 
     const_iterator &operator--() {
-      d_node_p = d_node_p->d_prevs[d_level];
+      d_node_p = d_node_p->d_skips[d_level].first;
       return *this;
     }
 
     const_iterator operator--(int) {
-      auto ret = const_iterator{*this};
-      d_node_p = d_node_p->d_prevs[d_level];
+      const_iterator ret{*this};
+      d_node_p = d_node_p->d_skips[d_level].first;
       return ret;
     }
 
-    const_iterator &down() {
+   private:
+    constexpr const_iterator &down() {
       --d_level;
       return *this;
     }
 
-    const_iterator &up() {
-      if (d_level + 1 < d_node_p->links()) ++d_level;
+    constexpr const_iterator &up() {
+      ++d_level;
       return *this;
     }
 
-    reference operator*() const {
-      return static_cast<const skip_node *>(d_node_p)->d_data;
-    }
+   public:
+    reference operator*() const { return *d_node_p->d_data; }
 
-    pointer operator->() const {
-      return &(static_cast<const skip_node *>(d_node_p)->d_data);
-    }
+    pointer operator->() const { return d_node_p->d_data.operator->(); }
 
-    friend bool operator==(const const_iterator &lhs,
-                           const const_iterator &rhs) {
+    constexpr friend bool operator==(const const_iterator &lhs,
+                                     const const_iterator &rhs) {
       return lhs.d_node_p == rhs.d_node_p;
     }
 
-    friend bool operator!=(const const_iterator &lhs,
-                           const const_iterator &rhs) {
+    constexpr friend bool operator!=(const const_iterator &lhs,
+                                     const const_iterator &rhs) {
       return lhs.d_node_p != rhs.d_node_p;
     }
 
@@ -258,8 +233,8 @@ class skiplist {
     }
 
    private:
-    iterator un_const() const {
-      return iterator{const_cast<skip_node_base *>(d_node_p)};  // NOLINT
+    constexpr iterator un_const() const {
+      return iterator{const_cast<skip_node *>(d_node_p)};  // NOLINT
     }
   };
 
@@ -359,15 +334,14 @@ class skiplist {
   };
 
  private:
-  constexpr void link_(size_t level, skip_node_base *first,
-                       skip_node_base *last) {
-    first->d_nexts[level] = last;
-    last->d_prevs[level] = first;
+  inline void link_(size_t level, skip_node *first, skip_node *last) {
+    first->d_skips[level].second = last;
+    last->d_skips[level].first = first;
   }
 
   template <typename... Args>
-  constexpr void link_(size_t level, skip_node_base *first,
-                       skip_node_base *second, Args... rest) {
+  inline void link_(size_t level, skip_node *first, skip_node *second,
+                    Args... rest) {
     link_(level, first, second);
     link_(level, second, rest...);
   }
@@ -380,28 +354,27 @@ class skiplist {
    */
   template <class K>
   insert_type find_pos_(iterator hint, const K &data) {
-    if (begin() == end()) return {end(), true};
+    if (empty()) return {end(), true};
     if (hint == end() || d_comp(*hint, data)) {  // Go forwards
       hint.d_level = hint.d_node_p->links() - 1;
+      assert(hint.d_level >= 0);
       while (hint.d_level > 0) {
         auto next = hint;
         ++next;
-        if (next == end()) {
+        if (next == end() || d_comp(data, *next)) {
           hint.down();
         } else if (d_comp(*next, data)) {
           ++hint;
-        } else if (d_comp(data, *next)) {
-          hint.down();
         } else {
           next.d_level = 0;
           return {next, false};
         }
       }
+      assert(hint.d_level == 0);
       if (hint == end()) ++hint;
       while (hint != end() && d_comp(*hint, data)) {
         ++hint;
       }
-      /*!d_comp(*hint, data) &&*/
       if (hint != end() && !d_comp(data, *hint)) return {hint, false};
       return {hint, true};
     } else if (d_comp(data, *hint)) {  // Go backwards
@@ -432,17 +405,55 @@ class skiplist {
     return {hint, false};
   }
 
+  /**
+   * Experimental, insert without a hint and return a stack with the nodes an
+   * inserted node should come after.
+   * Slower than the normal way
+   */
+  template <class K>
+  std::pair<std::stack<iterator>, bool> find_pos_(const K &data) {
+    std::stack<iterator> history;
+    if (empty()) return {std::move(history), true};
+    auto iter = end();
+    iter.d_level = iter.d_node_p->links() - 1;
+    while (iter.d_level > 0) {
+      auto next = iter;
+      ++next;
+      if (next == end() || d_comp(data, *next)) {
+        history.push(iter);
+        iter.down();
+      } else if (d_comp(*next, data)) {
+        ++iter;
+      } else {  // Found
+        history.push(iter);
+        next.d_level = 0;
+        return {std::move(history), false};
+      }
+    }
+    if (iter == end()) ++iter;
+    while (iter != end() && d_comp(*iter, data)) {
+      ++iter;
+    }
+
+    history.push(--iter);
+    ++iter;
+
+    if (iter != end() && !d_comp(data, *iter))
+      return {std::move(history), false};
+    return {std::move(history), true};
+  }
+
   /*
    * Inserts the node directly before loc
    */
-  void insert_node_(const iterator &loc, skip_node_base *node) {
+  inline void insert_node_(const iterator &loc, skip_node *node) {
     size_t lvl = node->links();
     d_head.expand(lvl);
     auto cur = loc;
     cur.d_level = 0;
     --cur;
     for (size_t i = 0; i < lvl; i++) {
-      while (cur.d_level < i) {
+      if (cur.d_level < i) {
         while (cur.d_node_p->links() <= i) {
           --cur;
         }
@@ -450,19 +461,35 @@ class skiplist {
       }
       assert(cur.d_level == i);
       assert(i < cur.d_node_p->links());
-      assert(i < cur.d_node_p->d_nexts.size());
-      link_(i, cur.d_node_p, node, cur.d_node_p->d_nexts[i]);
+      link_(i, cur.d_node_p, node, cur.d_node_p->d_skips[i].second);
     }
   }
 
-  void unlink_node_(skip_node_base *node) {
+  inline void insert_node_history_(skip_node *node,
+                                   std::stack<iterator> history) {
+    size_t lvl = node->links();
+    d_head.expand(lvl);
+    for (size_t i = 0; i < lvl; i++) {
+      if (!history.empty()) {
+        auto &cur = history.top();
+        assert(i < cur.d_node_p->links());
+        link_(i, cur.d_node_p, node, cur.d_node_p->d_skips[i].second);
+        history.pop();
+      } else {
+        auto cur = end();
+        link_(i, cur.d_node_p, node, cur.d_node_p->d_skips[i].second);
+      }
+    }
+  }
+
+  inline void unlink_node_(skip_node *node) {
     for (size_t i = 0; i < node->links(); i++) {
-      link_(i, node->d_prevs[i], node->d_nexts[i]);
+      link_(i, node->d_skips[i].first, node->d_skips[i].second);
     }
   }
 
   template <typename... Args>
-  auto allocate_node_(Args &&... args) {
+  inline auto allocate_node_(Args &&... args) {
     auto node = node_alloc_traits::allocate(d_node_alloc, 1);
     if (!node) {
       throw std::bad_alloc{};
@@ -477,11 +504,7 @@ class skiplist {
     return node;
   }
 
-  void destroy_node_(skip_node_base *node) {
-    destroy_node_(static_cast<node_ptr>(node));
-  }
-
-  void destroy_node_(node_ptr node) {
+  inline void destroy_node_(node_ptr node) {
     node_alloc_traits::destroy(d_node_alloc, node);
     node_alloc_traits::deallocate(d_node_alloc, node, 1);
   }
@@ -505,6 +528,14 @@ class skiplist {
       : d_comp{std::move(other.d_comp)},
         d_alloc{std::move(other.d_alloc)},
         d_head{std::move(other.d_head)} {}
+
+  template <class InputIt>
+  skiplist(InputIt first, InputIt last,
+           const value_compare &cmp = value_compare(),
+           const Allocator &alloc = Allocator())
+      : skiplist{cmp, alloc} {
+    insert(first, last);
+  }
 
   skiplist(std::initializer_list<value_type> init,
            const value_compare &cmp = value_compare(),
@@ -540,8 +571,7 @@ class skiplist {
       }
     } else {
       d_head = std::move(other.d_head);
-      other.d_head.d_nexts = {{&other.d_head}};
-      other.d_head.d_prevs = {{&other.d_head}};
+      other.d_head.d_skips = {{std::pair{&other.d_head, &other.d_head}}};
       assert(other.empty());
     }
     return *this;
@@ -549,7 +579,7 @@ class skiplist {
 
   /* Iterators */
   iterator begin() noexcept { return ++end(); }
-  iterator end() noexcept { return iterator{&d_head}; }
+  constexpr iterator end() noexcept { return iterator{&d_head}; }
   const_iterator begin() const noexcept { return cbegin(); }
   const_iterator end() const noexcept { return cend(); }
   const_iterator cbegin() const noexcept { return ++cend(); }
@@ -584,12 +614,11 @@ class skiplist {
         last = it;
       }
       destroy_node_(last.d_node_p);
-      d_head.d_nexts = {{&d_head}};
-      d_head.d_prevs = {{&d_head}};
+      d_head.d_skips = {{std::pair{&d_head, &d_head}}};
     }
   }
 
-  insert_type insert(const_reference data) { return insert(end(), data); }
+  insert_type insert(const_reference data) { return insert(cend(), data); }
 
   insert_type insert(const_iterator hint, const_reference data) {
     auto pos = find_pos_(iterator{hint}, data);
@@ -620,7 +649,7 @@ class skiplist {
     if (!nh) {
       return ret;
     }
-    auto pos = find_pos_(end(), nh.d_node_p->d_data);
+    auto pos = find_pos_(end(), *nh.d_node_p->d_data);
     if (!pos.second) {
       printf("Pos exists\n");
       ret.position = pos.first;
@@ -638,7 +667,7 @@ class skiplist {
   iterator insert(const_iterator hint, node_type &&nh) {
     if (!nh) return end();
     size_t lvl = d_distrib(d_gen) + 1;
-    auto pos = find_pos_(iterator{hint}, nh.d_node_p->d_data);
+    auto pos = find_pos_(iterator{hint}, *nh.d_node_p->d_data);
     if (!pos.second) {
       return pos.first;
     }
@@ -646,6 +675,11 @@ class skiplist {
     node->expand(lvl);
     insert_node_(pos.first, node);
     return iterator{node};
+  }
+
+  template <class InputIt>
+  void insert(InputIt first, InputIt last) {
+    while (first != last) insert(*first++);
   }
 
   template <typename... Args>
@@ -675,7 +709,7 @@ class skiplist {
   }
 
   iterator erase(const iterator &pos) {
-    auto ret = iterator{pos.d_node_p->d_nexts[0]};
+    auto ret = iterator{pos.d_node_p->d_skips[0].second};
     auto node = pos.d_node_p;
     unlink_node_(node);
     destroy_node_(node);
@@ -700,7 +734,7 @@ class skiplist {
   }
 
   node_type extract(const const_iterator &pos) {
-    auto node = static_cast<node_ptr>(pos.un_const().d_node_p);
+    auto node = pos.un_const().d_node_p;
     unlink_node_(node);
     return node_type{node, d_node_alloc};
   }
@@ -747,26 +781,28 @@ class skiplist {
   /* Observers */
   value_compare value_comp() const { return d_comp; }
 
-#ifdef DNDEBUG
+#ifndef DNDEBUG
   /*
    * Utilities
    * Not for normal use
    */
   void print_state() {
-    for (size_t i = 0; i < d_head.links(); i++) {
-      auto iter = const_iterator{d_head.d_nexts[i], i};
-      while (iter != cend()) {
-        std::cout << *iter << ", ";
-        ++iter;
+    if constexpr (std::is_same_v<T, int>) {
+      for (size_t i = 0; i < d_head.links(); i++) {
+        auto iter = const_iterator{d_head.d_skips[i].second, i};
+        while (iter != end()) {
+          std::cout << *iter << ", ";
+          ++iter;
+        }
+        std::cout << "END\n";
       }
-      std::cout << "END\n";
     }
   }
 
   void verify_integrity() {
     for (size_t i = 0; i < d_head.links(); i++) {
-      auto iter = const_iterator{d_head.d_nexts[i], i};
-      while (iter != cend()) {
+      auto iter = iterator{d_head.d_skips[i].second, i};
+      while (iter != end()) {
         auto old = iter++;
         assert(old == --iter);
         ++iter;
@@ -782,10 +818,9 @@ class skiplist {
   value_compare d_comp;
   allocator_type d_alloc;
   node_allocator_type d_node_alloc;
-  skip_node_base d_head;
-  std::random_device d_rd{};
+  skip_node d_head;
+  std::mt19937 d_gen{};
   std::geometric_distribution<size_t> d_distrib{};
-  std::mt19937 d_gen{d_rd()};
 };
 
 template <class T, class Compare, class Alloc>

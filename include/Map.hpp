@@ -80,11 +80,11 @@ class map {
     node_type &operator=(node_type &&) = default;
 
     key_type &key() const {
-      return container_type::node_type::d_node_p->d_data.first;
+      return container_type::node_type::d_node_p->d_data->first;
     }
 
     mapped_type &mapped() const {
-      return container_type::node_type::d_node_p->d_data.second;
+      return container_type::node_type::d_node_p->d_data->second;
     }
   };
 

@@ -31,8 +31,10 @@
 *.out
 *.app
 
-# Build directory
-/build/
+# Build directories
+build/
+clang/
+release/
 
 # YCM config
 .ycm_extra_conf.py

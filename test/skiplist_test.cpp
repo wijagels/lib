@@ -60,6 +60,7 @@ TEST(skiplist_test, insert_test) {  // NOLINT
   for (auto e : g_seed) {
     s.insert(e);
   }
+  s.print_state();
   EXPECT_TRUE(std::equal(s.begin(), s.end(), g_sorted.begin(), g_sorted.end()));
 }
 
@@ -94,6 +95,7 @@ TEST(skiplist_test, med_insert_test) {  // NOLINT
   for (auto e : g_md_list) {
     s.insert(e);
   }
+  s.print_state();
   EXPECT_TRUE(std::equal(s.begin(), s.end(), rand_list_sorted.begin(),
                          rand_list_sorted.end()));
 }
@@ -104,6 +106,7 @@ TEST(skiplist_test, big_insert_test) {  // NOLINT
   for (auto e : g_rand_list) {
     s.insert(e);
   }
+  s.print_state();
   EXPECT_TRUE(std::equal(s.begin(), s.end(), rand_list_sorted.begin(),
                          rand_list_sorted.end()));
 }
@@ -181,8 +184,6 @@ TEST(skiplist_test, merge_test) {  // NOLINT
       std::equal(list1.begin(), list1.end(), result1.begin(), result1.end()));
   EXPECT_TRUE(
       std::equal(list2.begin(), list2.end(), result2.begin(), result2.end()));
-  list1.verify_integrity();
-  list2.verify_integrity();
 }
 
 TEST(skiplist_test, iterator_test) {  // NOLINT
