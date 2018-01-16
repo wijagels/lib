@@ -29,7 +29,7 @@ struct InsertReturnType {
 template <typename T, class Compare = std::less<T>,
           class Allocator = std::allocator<T>>
 class skiplist {
-#pragma pack(push, 1)
+#pragma pack(push, 4)
   struct skip_node {
     explicit skip_node(size_t level)
         : d_data{}, d_skips{level, std::pair{this, this}} {}
