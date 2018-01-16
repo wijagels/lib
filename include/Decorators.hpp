@@ -10,7 +10,7 @@
 
 template <typename T, typename U>
 struct is_similar
-    : std::is_same<std::remove_reference_t<T>, std::remove_reference_t<U>> {};
+    : std::is_same<std::decay_t<T>, std::decay_t<U>> {};
 
 template <class T, class U>
 inline constexpr bool is_similar_v = is_similar<T, U>::value;
