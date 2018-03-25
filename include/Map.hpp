@@ -1,6 +1,5 @@
 // Copyright 2017 William Jagels
-#ifndef INCLUDE_MAP_HPP_
-#define INCLUDE_MAP_HPP_
+#pragma once
 #include "SkipList.hpp"
 #include <functional>
 #include <initializer_list>
@@ -29,7 +28,7 @@ class map {
   class value_compare {
    protected:
     friend map;
-    explicit value_compare(Compare c) : d_comp{c} {}
+    constexpr explicit value_compare(Compare c) : d_comp{std::move(c)} {}
     Compare d_comp;
 
    public:
@@ -73,7 +72,8 @@ class map {
     /*
      * Conversion constructor from base class
      */
-    node_type(typename container_type::node_type &&nh)
+    node_type(typename container_type::node_type &&nh) noexcept(
+        std::is_nothrow_move_constructible_v<decltype(nh)>)
         : container_type::node_type{std::move(nh)} {}
 
     node_type &operator=(const node_type &) = delete;
@@ -118,12 +118,16 @@ class map {
         d_val_comp{other.d_val_comp},
         d_container{other.d_container, alloc} {}
 
-  map(map &&other)
+  map(map &&other) noexcept(
+      std::is_nothrow_move_constructible_v<Compare>
+          &&std::is_nothrow_move_constructible_v<container_type>)
       : d_comp{std::move(other.d_comp)},
         d_val_comp{std::move(other.d_val_comp)},
         d_container{std::move(other.d_container)} {}
 
-  map(map &&other, const Allocator &alloc)
+  map(map &&other, const Allocator &alloc) noexcept(
+      std::is_nothrow_move_constructible_v<Compare>
+          &&std::is_nothrow_move_constructible_v<container_type>)
       : d_comp{std::move(other.d_comp)},
         d_val_comp{std::move(other.d_val_comp)},
         d_container{std::move(other.d_container), alloc} {}
@@ -153,8 +157,9 @@ class map {
   }
 
   map &operator=(map &&other) noexcept(
-      container_type::operator=(std::move(container_type{}))) {
-    d_val_comp = other.d_val_comp;
+      std::is_nothrow_move_assignable_v<container_type> && std::is_nothrow_move_assignable_v<Compare>) {
+    d_val_comp = std::move(other.d_val_comp);
+    d_comp = std::move(other.d_comp);
     d_container = std::move(other.d_container);
   }
 
@@ -515,5 +520,3 @@ bool operator>=(const map<Key, T, Compare, Alloc> &lhs,
 }
 
 }  // namespace wijagels
-
-#endif  // INCLUDE_MAP_HPP_

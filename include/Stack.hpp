@@ -1,6 +1,5 @@
 // Copyright 2017 William Jagels
-#ifndef INCLUDE_STACK_HPP_
-#define INCLUDE_STACK_HPP_
+#pragma once
 #include "List.hpp"
 #include <utility>
 
@@ -16,8 +15,8 @@ class stack {
 
   explicit stack(const container_type &cont) : c{cont} {}
   explicit stack(container_type &&cont = container_type()) : c{cont} {}
-  stack(const stack &other) : c{other.c} {}
-  stack(stack &&other) : c{std::move(other.c)} {}
+  stack(const stack &other) = default;
+  stack(stack &&other) = default;
   template <class Alloc>
   explicit stack(const Alloc &alloc) : c{alloc} {}
   template <class Alloc>
@@ -29,7 +28,8 @@ class stack {
   template <class Alloc>
   stack(stack &&other, const Alloc &alloc) : c{std::move(other.c), alloc} {}
 
-  stack operator=(const stack &other) { c = other.c; }
+  stack &operator=(const stack &other) = default;
+  stack &operator=(stack &&other) = default;
 
   /* Element access */
   reference top() { return c.back(); }
@@ -51,6 +51,7 @@ class stack {
 
   void swap(stack &other) { c.swap(other.c); }
 
+ private:
   container_type c;
 };
 template <class T, class Container>
@@ -82,5 +83,3 @@ bool operator>=(const stack<T, Container> &lhs,
   return lhs >= rhs;
 }
 }  // namespace wijagels
-
-#endif  // INCLUDE_STACK_HPP_

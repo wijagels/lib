@@ -1,7 +1,5 @@
 // Copyright 2017 William Jagels
-#ifndef INCLUDE_POINT_HPP_
-#define INCLUDE_POINT_HPP_
-
+#pragma once
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -149,5 +147,3 @@ struct hash<Point<D>> {
   }
 };
 }  // namespace std
-
-#endif  // INCLUDE_POINT_HPP_

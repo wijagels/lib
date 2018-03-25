@@ -1,6 +1,5 @@
 // Copyright 2017 William Jagels
-#ifndef INCLUDE_SKIPLIST_HPP_
-#define INCLUDE_SKIPLIST_HPP_
+#pragma once
 #include <boost/container/small_vector.hpp>
 #include <cassert>
 #include <functional>
@@ -292,7 +291,7 @@ class skiplist {
 
     node_type(const node_type &) = delete;
 
-    node_type(node_type &&other)
+    node_type(node_type &&other) noexcept
         : node_type{other.d_node_p, std::move(other.d_alloc)} {
       other.d_node_p = nullptr;
     }
@@ -301,12 +300,12 @@ class skiplist {
 
     node_type &operator=(const node_type &) = delete;
 
-    node_type &operator=(node_type &&other) {
+    node_type &operator=(node_type &&other) noexcept {
       destroy_();
       d_node_p = other.d_node_p;
       other.d_node_p = nullptr;
-      if (typename std::allocator_traits<
-              allocator_type>::propagate_on_container_move_assignment())
+      if constexpr (typename std::allocator_traits<allocator_type>::
+                        propagate_on_container_move_assignment())
         d_alloc = std::move(other.d_alloc);
       return *this;
     }
@@ -524,7 +523,8 @@ class skiplist {
     }
   }
 
-  skiplist(const skiplist &&other)
+  skiplist(const skiplist &&other) noexcept(
+      std::is_nothrow_move_constructible_v<Compare>)
       : d_comp{std::move(other.d_comp)},
         d_alloc{std::move(other.d_alloc)},
         d_head{std::move(other.d_head)} {}
@@ -559,7 +559,7 @@ class skiplist {
 
   skiplist &operator=(skiplist &&other) noexcept(
       std::allocator_traits<Allocator>::is_always_equal::value
-          &&std::is_nothrow_move_assignable<Compare>::value) {
+          &&std::is_nothrow_move_assignable_v<Compare>) {
     clear();
     if (typename std::allocator_traits<
             allocator_type>::propagate_on_container_move_assignment()) {
@@ -862,5 +862,3 @@ bool operator>=(const skiplist<T, Compare, Alloc> &lhs,
 }
 
 }  // namespace wijagels
-
-#endif  // INCLUDE_SKIPLIST_HPP_

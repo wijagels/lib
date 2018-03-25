@@ -398,3 +398,7 @@ TEST(ListTest, allocator_test) {  // NOLINT
   EXPECT_TRUE(std::equal(lst.begin(), lst.end(), push.begin(), push.end()));
   EXPECT_TRUE(lst.d_node_alloc.counter == 9);
 }
+
+TEST(ListTest, noexcept_true) {  // NOLINT
+  list<std::string> lst;
+}

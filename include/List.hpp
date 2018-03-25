@@ -1,6 +1,5 @@
 // Copyright 2017 William Jagels
-#ifndef INCLUDE_LIST_HPP_
-#define INCLUDE_LIST_HPP_
+#pragma once
 #include <cassert>
 #include <cstddef>
 #include <initializer_list>
@@ -12,22 +11,21 @@
 namespace wijagels {
 namespace detail {
 struct Node_Base {
-  Node_Base() : Node_Base{this, this} {}
-  Node_Base(Node_Base *prev, Node_Base *next)
+  constexpr Node_Base() : Node_Base{this, this} {}
+  constexpr Node_Base(Node_Base *prev, Node_Base *next)
       : d_prev_p{prev}, d_next_p{next} {}
-  Node_Base(const Node_Base &other) = default;
-  Node_Base(Node_Base &&other)
-      : d_prev_p{std::move(other.d_prev_p)},
-        d_next_p{std::move(other.d_next_p)} {
+  constexpr Node_Base(const Node_Base &other) = default;
+  constexpr Node_Base(Node_Base &&other) noexcept
+      : d_prev_p{other.d_prev_p}, d_next_p{other.d_next_p} {
     other.d_next_p = &other;
     other.d_prev_p = &other;
   }
   ~Node_Base() = default;
-  Node_Base &operator=(const Node_Base &) = default;
-  Node_Base &operator=(Node_Base &&other) {
+  constexpr Node_Base &operator=(const Node_Base &) = default;
+  constexpr Node_Base &operator=(Node_Base &&other) noexcept {
     if (this != &other) {
-      d_prev_p = std::move(other.d_prev_p);
-      d_next_p = std::move(other.d_next_p);
+      d_prev_p = other.d_prev_p;
+      d_next_p = other.d_next_p;
       other.d_next_p = &other;
       other.d_prev_p = &other;
     }
@@ -39,27 +37,30 @@ struct Node_Base {
 
 template <typename T>
 struct Node : Node_Base {
-  Node(Node *prev, Node *next, const T &data)
+  constexpr Node(Node *prev, Node *next, const T &data)
       : Node_Base{prev, next}, d_data{data} {}
 
-  explicit Node(const T &data) : Node{this, this, data} {}
+  constexpr explicit Node(const T &data) : Node{this, this, data} {}
 
-  Node(Node *prev, Node *next, T &&data)
+  constexpr Node(Node *prev, Node *next,
+                 T &&data) noexcept(std::is_nothrow_move_constructible_v<T>)
       : Node_Base{prev, next}, d_data{std::move(data)} {}
 
   template <typename... Args>
-  explicit Node(Args &&... args)
+  constexpr explicit Node(Args &&... args) noexcept(
+      std::is_nothrow_constructible_v<Node, Node *, Node *, Args...>)
       : Node{this, this, std::forward<Args>(args)...} {}
 
   template <typename... Args>
-  explicit Node(Node *prev, Node *next, Args &&... args)
+  explicit Node(Node *prev, Node *next, Args &&... args) noexcept(
+      std::is_nothrow_constructible_v<T, Args...>)
       : Node_Base{prev, next}, d_data{args...} {}
 
-  T &operator*() { return d_data; }
+  constexpr T &operator*() { return d_data; }
 
-  T *operator->() { return &d_data; }
+  constexpr T *operator->() { return &d_data; }
 
-  friend void swap(Node &lhs, Node &rhs) noexcept {
+  constexpr friend void swap(Node &lhs, Node &rhs) noexcept {
     std::swap(lhs.d_next_p, rhs.d_next_p);
     std::swap(lhs.d_prev_p, rhs.d_prev_p);
   }
@@ -106,47 +107,48 @@ class list {
         typename std::allocator_traits<allocator_type>::const_pointer;
     using iterator_category = std::bidirectional_iterator_tag;
 
-    explicit iterator(Node_Base *node) : d_node_p{node} {}
+    constexpr explicit iterator(Node_Base *node) : d_node_p{node} {}
 
-    iterator &operator++() {
+    constexpr iterator &operator++() {
       d_node_p = d_node_p->d_next_p;
       return *this;
     }
 
-    iterator operator++(int) {
+    constexpr iterator operator++(int) {
       iterator ret = iterator{*this};
       d_node_p = d_node_p->d_next_p;
       return ret;
     }
 
-    iterator &operator--() {
+    constexpr iterator &operator--() {
       d_node_p = d_node_p->d_prev_p;
       return *this;
     }
 
-    iterator operator--(int) {
+    constexpr iterator operator--(int) {
       iterator ret = iterator{*this};
       d_node_p = d_node_p->d_prev_p;
       return ret;
     }
 
-    reference operator*() const {
+    constexpr reference operator*() const {
       return static_cast<Node *>(d_node_p)->d_data;
     }
 
-    pointer operator->() const {
+    constexpr pointer operator->() const {
       return &(static_cast<Node *>(d_node_p)->d_data);
     }
 
-    friend bool operator==(const iterator &lhs, const iterator &rhs) {
+    constexpr friend bool operator==(const iterator &lhs, const iterator &rhs) {
       return lhs.d_node_p == rhs.d_node_p;
     }
 
-    friend bool operator!=(const iterator &lhs, const iterator &rhs) {
+    constexpr friend bool operator!=(const iterator &lhs, const iterator &rhs) {
       return lhs.d_node_p != rhs.d_node_p;
     }
 
-    friend difference_type distance(const iterator &lhs, const iterator &rhs) {
+    constexpr friend difference_type distance(const iterator &lhs,
+                                              const iterator &rhs) {
       size_type d = 0;
       auto it = lhs;
       while (it++ != rhs) d++;
@@ -165,52 +167,53 @@ class list {
     using pointer = typename std::allocator_traits<Allocator>::const_pointer;
     using iterator_category = std::bidirectional_iterator_tag;
 
-    explicit const_iterator(const Node_Base *node) : d_node_p{node} {}
+    constexpr explicit const_iterator(const Node_Base *node) : d_node_p{node} {}
 
-    const_iterator(const iterator &other) : d_node_p{other.d_node_p} {}
+    constexpr const_iterator(const iterator &other)
+        : d_node_p{other.d_node_p} {}
 
-    const_iterator &operator++() {
+    constexpr const_iterator &operator++() {
       d_node_p = d_node_p->d_next_p;
       return *this;
     }
 
-    const_iterator operator++(int) {
+    constexpr const_iterator operator++(int) {
       const_iterator ret = const_iterator{*this};
       d_node_p = d_node_p->d_next_p;
       return ret;
     }
 
-    const_iterator &operator--() {
+    constexpr const_iterator &operator--() {
       d_node_p = d_node_p->d_prev_p;
       return *this;
     }
 
-    const_iterator operator--(int) {
+    constexpr const_iterator operator--(int) {
       const_iterator ret = const_iterator{*this};
       d_node_p = d_node_p->d_prev_p;
       return ret;
     }
 
-    reference operator*() const {
+    constexpr reference operator*() const {
       return static_cast<const Node *>(d_node_p)->d_data;
     }
 
-    pointer operator->() const {
+    constexpr pointer operator->() const {
       return &(static_cast<const Node *>(d_node_p)->d_data);
     }
 
-    friend bool operator==(const const_iterator &lhs,
-                           const const_iterator &rhs) {
+    constexpr friend bool operator==(const const_iterator &lhs,
+                                     const const_iterator &rhs) {
       return lhs.d_node_p == rhs.d_node_p;
     }
 
-    friend bool operator!=(const const_iterator &lhs,
-                           const const_iterator &rhs) {
+    constexpr friend bool operator!=(const const_iterator &lhs,
+                                     const const_iterator &rhs) {
       return lhs.d_node_p != rhs.d_node_p;
     }
 
-    friend difference_type distance(const const_iterator &lhs,
-                                    const const_iterator &rhs) {
+    constexpr friend difference_type distance(const const_iterator &lhs,
+                                              const const_iterator &rhs) {
       difference_type d = 0;
       auto it = lhs;
       while (it++ != rhs) d++;
@@ -222,15 +225,15 @@ class list {
      * Note that this is only used in the context of having a mutable reference
      * into the underlying container.
      */
-    iterator un_const() {
+    constexpr iterator un_const() {
       return iterator{const_cast<Node_Base *>(d_node_p)};  // NOLINT
     }
   };
 
  public:
-  list() : list{Allocator()} {}
+  constexpr list() noexcept(noexcept(Allocator())) : list{Allocator()} {}
 
-  explicit list(const Allocator &alloc) : d_alloc{alloc} {}
+  constexpr explicit list(const Allocator &alloc) : d_alloc{alloc} {}
 
   list(size_type count, const T &value, const Allocator &alloc = Allocator())
       : d_alloc{alloc} {
@@ -266,7 +269,7 @@ class list {
     }
   }
 
-  list(list &&other)
+  list(list &&other) noexcept(std::is_nothrow_move_constructible_v<Allocator>)
       : d_alloc{std::move(other.d_alloc)},
         d_node_alloc{std::move(other.d_alloc)} {
     splice(cend(), std::move(other));
@@ -295,8 +298,12 @@ class list {
   }
 
   list &operator=(list &&other) noexcept(
-      std::allocator_traits<allocator_type>::is_always_equal::value) {
-    if (this == &other) return *this;  // Not sure if this is possible
+      std::allocator_traits<allocator_type>::is_always_equal::value
+          &&std::is_nothrow_move_assignable_v<allocator_type> &&
+      (!std::allocator_traits<
+           allocator_type>::propagate_on_container_move_assignment::value ||
+       std::is_nothrow_move_assignable_v<value_type>)) {
+    if (this == &other) return *this;
     clear();
     if constexpr (std::allocator_traits<allocator_type>::
                       propagate_on_container_move_assignment::value) {
@@ -380,7 +387,7 @@ class list {
 
   /* Capacity */
 
-  bool empty() const noexcept { return cbegin() == cend(); }
+  constexpr bool empty() const noexcept { return cbegin() == cend(); }
 
   size_type size() const noexcept { return std::distance(begin(), end()); }
 
@@ -395,13 +402,14 @@ class list {
   }
 
  private:
-  inline void link_(Node_Base *first, Node_Base *last) {
+  static constexpr void link_(Node_Base *first, Node_Base *last) {
     first->d_next_p = last;
     last->d_prev_p = first;
   }
 
   template <typename... Args>
-  inline void link_(Node_Base *first, Node_Base *second, Args... rest) {
+  static constexpr void link_(Node_Base *first, Node_Base *second,
+                              Args... rest) {
     link_(first, second);
     link_(second, rest...);
   }
@@ -688,5 +696,3 @@ using list = list<T, std::pmr::polymorphic_allocator<T>>;
 #endif  // __cplusplus > 201402L
 */
 }  // namespace wijagels
-
-#endif  // INCLUDE_LIST_HPP_

@@ -1,6 +1,5 @@
 // Copyright 2017 William Jagels
-#ifndef INCLUDE_DECORATORS_HPP_
-#define INCLUDE_DECORATORS_HPP_
+#pragma once
 #include <chrono>
 #include <functional>
 #include <iostream>
@@ -269,5 +268,3 @@ constexpr auto make_memoized(std::function<R(Args...)> f) noexcept {
   auto hook = MemoizerHook<R, Args...>{};
   return make_decorator(std::move(hook), std::move(f));
 }
-
-#endif  // INCLUDE_DECORATORS_HPP_

@@ -1,6 +1,5 @@
 // Copyright 2017 William Jagels
-#ifndef INCLUDE_VECTOR_HPP_
-#define INCLUDE_VECTOR_HPP_
+#pragma once
 #include <cassert>
 #include <climits>
 #include <cmath>
@@ -35,36 +34,36 @@ class vector {
     using pointer = value_type *;
     using iterator_category = std::random_access_iterator_tag;
 
-    explicit iterator(pointer ptr) : d_data_p{ptr} {}
+    constexpr explicit iterator(pointer ptr) : d_data_p{ptr} {}
 
-    iterator &operator++() {
+    constexpr iterator &operator++() {
       ++d_data_p;
       return *this;
     }
 
-    iterator operator++(int) {
+    constexpr iterator operator++(int) {
       iterator ret = iterator{*this};
       ++d_data_p;
       return ret;
     }
 
-    iterator &operator+=(difference_type n) {
+    constexpr iterator &operator+=(difference_type n) {
       d_data_p += n;
       return *this;
     }
 
-    iterator &operator--() {
+    constexpr iterator &operator--() {
       --d_data_p;
       return *this;
     }
 
-    iterator operator--(int) {
+    constexpr iterator operator--(int) {
       iterator ret = iterator{*this};
       --d_data_p;
       return ret;
     }
 
-    iterator &operator-=(difference_type n) {
+    constexpr iterator &operator-=(difference_type n) {
       d_data_p -= n;
       return *this;
     }
@@ -77,53 +76,63 @@ class vector {
       return *(d_data_p + n);
     }
 
-    friend inline bool operator==(const iterator &lhs, const iterator &rhs) {
+    constexpr friend inline bool operator==(const iterator &lhs,
+                                            const iterator &rhs) {
       return lhs.d_data_p == rhs.d_data_p;
     }
 
-    friend inline bool operator!=(const iterator &lhs, const iterator &rhs) {
+    constexpr friend inline bool operator!=(const iterator &lhs,
+                                            const iterator &rhs) {
       return !(lhs == rhs);
     }
 
-    friend inline bool operator<(const iterator &lhs, const iterator &rhs) {
+    constexpr friend inline bool operator<(const iterator &lhs,
+                                           const iterator &rhs) {
       return lhs.d_data_p < rhs.d_data_p;
     }
 
-    friend inline bool operator>(const iterator &lhs, const iterator &rhs) {
+    constexpr friend inline bool operator>(const iterator &lhs,
+                                           const iterator &rhs) {
       return rhs < lhs;
     }
 
-    friend inline bool operator<=(const iterator &lhs, const iterator &rhs) {
+    constexpr friend inline bool operator<=(const iterator &lhs,
+                                            const iterator &rhs) {
       return !(lhs > rhs);
     }
 
-    friend inline bool operator>=(const iterator &lhs, const iterator &rhs) {
+    constexpr friend inline bool operator>=(const iterator &lhs,
+                                            const iterator &rhs) {
       return !(lhs < rhs);
     }
 
-    friend inline difference_type distance(const iterator &lhs,
-                                           const iterator &rhs) {
+    constexpr friend inline difference_type distance(const iterator &lhs,
+                                                     const iterator &rhs) {
       return lhs.d_data_p - rhs.d_data_p;
     }
 
-    friend inline iterator operator+(const iterator &lhs, difference_type n) {
+    constexpr friend inline iterator operator+(const iterator &lhs,
+                                               difference_type n) {
       return iterator{lhs.d_data_p + n};
     }
 
-    friend inline iterator operator+(difference_type n, const iterator &rhs) {
+    constexpr friend inline iterator operator+(difference_type n,
+                                               const iterator &rhs) {
       return rhs + n;
     }
 
-    friend inline difference_type operator-(const iterator &lhs,
-                                            const iterator &rhs) {
+    constexpr friend inline difference_type operator-(const iterator &lhs,
+                                                      const iterator &rhs) {
       return distance(lhs, rhs);
     }
 
-    friend inline iterator operator-(difference_type n, const iterator &rhs) {
+    constexpr friend inline iterator operator-(difference_type n,
+                                               const iterator &rhs) {
       return iterator{n - rhs.d_data_p};
     }
 
-    friend inline iterator operator-(const iterator &lhs, difference_type n) {
+    constexpr friend inline iterator operator-(const iterator &lhs,
+                                               difference_type n) {
       return iterator{lhs.d_data_p - n};
     }
 
@@ -141,104 +150,107 @@ class vector {
     using pointer = value_type *;
     using iterator_category = std::random_access_iterator_tag;
 
-    explicit const_iterator(pointer ptr) : d_data_p{ptr} {}
-    const_iterator(const iterator &iter) : const_iterator{iter.d_data_p} {}
+    constexpr explicit const_iterator(pointer ptr) : d_data_p{ptr} {}
+    constexpr const_iterator(const iterator &iter)
+        : const_iterator{iter.d_data_p} {}
 
-    const_iterator &operator++() {
+    constexpr const_iterator &operator++() {
       ++d_data_p;
       return *this;
     }
 
-    const_iterator operator++(int) {
+    constexpr const_iterator operator++(int) {
       const_iterator ret = const_iterator{*this};
       ++d_data_p;
       return ret;
     }
 
-    const_iterator &operator+=(difference_type n) {
+    constexpr const_iterator &operator+=(difference_type n) {
       d_data_p += n;
       return *this;
     }
 
-    const_iterator &operator--() {
+    constexpr const_iterator &operator--() {
       --d_data_p;
       return *this;
     }
 
-    const_iterator operator--(int) {
+    constexpr const_iterator operator--(int) {
       const_iterator ret = const_iterator{*this};
       --d_data_p;
       return ret;
     }
 
-    const_iterator &operator-=(difference_type n) {
+    constexpr const_iterator &operator-=(difference_type n) {
       d_data_p -= n;
       return *this;
     }
 
-    reference operator*() const { return *d_data_p; }
+    constexpr reference operator*() const { return *d_data_p; }
 
-    pointer operator->() const { return d_data_p; }
+    constexpr pointer operator->() const { return d_data_p; }
 
-    reference operator[](difference_type n) const { return *(d_data_p + n); }
+    constexpr reference operator[](difference_type n) const {
+      return *(d_data_p + n);
+    }
 
-    friend inline bool operator==(const const_iterator &lhs,
-                                  const const_iterator &rhs) {
+    constexpr friend inline bool operator==(const const_iterator &lhs,
+                                            const const_iterator &rhs) {
       return lhs.d_data_p == rhs.d_data_p;
     }
 
-    friend inline bool operator!=(const const_iterator &lhs,
-                                  const const_iterator &rhs) {
+    constexpr friend inline bool operator!=(const const_iterator &lhs,
+                                            const const_iterator &rhs) {
       return !(lhs == rhs);
     }
 
-    friend inline bool operator<(const const_iterator &lhs,
-                                 const const_iterator &rhs) {
+    constexpr friend inline bool operator<(const const_iterator &lhs,
+                                           const const_iterator &rhs) {
       return lhs.d_data_p < rhs.d_data_p;
     }
 
-    friend inline bool operator>(const const_iterator &lhs,
-                                 const const_iterator &rhs) {
+    constexpr friend inline bool operator>(const const_iterator &lhs,
+                                           const const_iterator &rhs) {
       return rhs < lhs;
     }
 
-    friend inline bool operator<=(const const_iterator &lhs,
-                                  const const_iterator &rhs) {
+    constexpr friend inline bool operator<=(const const_iterator &lhs,
+                                            const const_iterator &rhs) {
       return !(lhs > rhs);
     }
 
-    friend inline bool operator>=(const const_iterator &lhs,
-                                  const const_iterator &rhs) {
+    constexpr friend inline bool operator>=(const const_iterator &lhs,
+                                            const const_iterator &rhs) {
       return !(lhs < rhs);
     }
 
-    friend inline difference_type distance(const const_iterator &lhs,
-                                           const const_iterator &rhs) {
+    constexpr friend inline difference_type distance(
+        const const_iterator &lhs, const const_iterator &rhs) {
       return lhs.d_data_p - rhs.d_data_p;
     }
 
-    friend inline const_iterator operator+(const const_iterator &lhs,
-                                           difference_type n) {
+    constexpr friend inline const_iterator operator+(const const_iterator &lhs,
+                                                     difference_type n) {
       return const_iterator{lhs.d_data_p + n};
     }
 
-    friend inline const_iterator operator+(difference_type n,
-                                           const const_iterator &rhs) {
+    constexpr friend inline const_iterator operator+(
+        difference_type n, const const_iterator &rhs) {
       return rhs + n;
     }
 
-    friend inline difference_type operator-(const const_iterator &lhs,
-                                            const const_iterator &rhs) {
+    constexpr friend inline difference_type operator-(
+        const const_iterator &lhs, const const_iterator &rhs) {
       return distance(lhs, rhs);
     }
 
-    friend inline const_iterator operator-(difference_type n,
-                                           const const_iterator &rhs) {
+    constexpr friend inline const_iterator operator-(
+        difference_type n, const const_iterator &rhs) {
       return const_iterator{n - rhs.d_data_p};
     }
 
-    friend inline const_iterator operator-(const const_iterator &lhs,
-                                           difference_type n) {
+    constexpr friend inline const_iterator operator-(const const_iterator &lhs,
+                                                     difference_type n) {
       return const_iterator{lhs.d_data_p - n};
     }
 
@@ -268,7 +280,7 @@ class vector {
    * Round up to the nearest valid array size,
    * g_growth_factor^x where x is an integer
    */
-  inline size_type nearest_increment_(size_type n) {
+  static constexpr size_type nearest_increment_(size_type n) {
     return std::max(1ul,
                     static_cast<size_type>(std::ceil(std::pow(
                         g_growth_factor,
@@ -320,7 +332,7 @@ class vector {
   /*
    * Utility to destroy every element in the current buffer
    */
-  inline void destroy_all_() {
+  void destroy_all_() noexcept {
     if constexpr (!std::is_trivially_destructible_v<value_type>) {
       for (size_type i = 0; i < size(); ++i) {
         destroy_one_(&d_buffer_p[i]);
@@ -328,13 +340,13 @@ class vector {
     }
   }
 
-  inline void destroy_one_(pointer ptr) {
+  void destroy_one_(pointer ptr) noexcept {
     if constexpr (!std::is_trivially_destructible_v<value_type>) {
       alloc_traits::destroy(d_allocator, ptr);
     }
   }
 
-  inline void clear_and_dealloc_() {
+  void clear_and_dealloc_() {
     clear();
     if (d_buffer_p) {
       alloc_traits::deallocate(d_allocator, d_buffer_p, capacity());
@@ -831,5 +843,3 @@ class vector {
   }
 };
 }  // namespace wijagels
-
-#endif  // INCLUDE_VECTOR_HPP_

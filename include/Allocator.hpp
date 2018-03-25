@@ -1,6 +1,5 @@
 // Copyright 2017 William Jagels
-#ifndef INCLUDE_ALLOCATOR_HPP_
-#define INCLUDE_ALLOCATOR_HPP_
+#pragma once
 #include <memory>
 
 namespace wijagels {
@@ -59,4 +58,3 @@ template <typename T, typename U>
 constexpr bool operator!=(const BasicAllocator<T> &,
                           const BasicAllocator<U> &) noexcept;
 }  // namespace wijagels
-#endif  // INCLUDE_ALLOCATOR_HPP_

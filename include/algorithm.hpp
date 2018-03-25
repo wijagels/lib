@@ -1,6 +1,5 @@
 // Copyright 2017 William Jagels
-#ifndef INCLUDE_ALGORITHM_HPP_
-#define INCLUDE_ALGORITHM_HPP_
+#pragma once
 /*
  * A set of extensions to <algorithm>
  */
@@ -438,5 +437,3 @@ auto search_n(ExecutionPolicy &&policy, Container &&c, Size count,
 }
 
 }  // namespace std
-
-#endif  // INCLUDE_ALGORITHM_HPP

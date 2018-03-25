@@ -11,11 +11,28 @@ add_compile_options(-Wall -Wextra -pedantic -Wcast-align -Wcast-qual -Wctor-dtor
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -DNDEBUG -fno-omit-frame-pointer")
 
 find_package(Boost REQUIRED)
+find_program(
+  CLANG_TIDY_EXE
+  NAMES "clang-tidy"
+  DOC "Path to clang-tidy executable"
+  )
 
 add_library(lib INTERFACE)
 add_library(Wijagels::lib ALIAS lib)
 target_include_directories(lib INTERFACE include)
 target_link_libraries(lib INTERFACE Boost::boost)
+
+# Purely for the sake of generating a compile command
+file(GLOB DUMMY_SRCS ${PROJECT_SOURCE_DIR}/dummy_targets/*.cpp)
+add_library(lib_dummy ${DUMMY_SRCS})
+target_link_libraries(lib_dummy Wijagels::lib)
+if(CLANG_TIDY_EXE)
+  set_target_properties(
+      lib_dummy
+    PROPERTIES
+    CXX_CLANG_TIDY "${CLANG_TIDY_EXE}"
+  )
+endif()
 
 enable_testing()
 add_subdirectory(test)

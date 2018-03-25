@@ -13,7 +13,7 @@ struct MoveStruct {
    */
   MoveStruct() = delete;
   MoveStruct(const MoveStruct &) = delete;
-  MoveStruct(MoveStruct &&x) : a_{std::move(x.a_)}, b_{std::move(x.b_)} {}
+  MoveStruct(MoveStruct &&x) noexcept : a_{x.a_}, b_{x.b_} {}
   MoveStruct(int a, double b) : a_{a}, b_{b} {}
   ~MoveStruct() = default;
   MoveStruct &operator=(const MoveStruct &) = delete;
