@@ -1,5 +1,6 @@
 // Copyright 2017 William Jagels
 #pragma once
+#include <algorithm>
 #include <cassert>
 #include <climits>
 #include <cmath>

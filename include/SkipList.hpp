@@ -5,6 +5,7 @@
 #include <functional>
 #include <iterator>
 #include <memory>
+#include <optional>
 #include <random>
 #include <stack>
 #include <type_traits>
