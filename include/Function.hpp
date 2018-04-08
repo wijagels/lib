@@ -59,8 +59,8 @@ class Function;
 
 template <typename ResultType, typename... ArgumentTypes>
 class Function<ResultType(ArgumentTypes...)> {
-  static constexpr std::size_t MAX_SIZE = 16;
-  static constexpr std::size_t ALIGNMENT = 16;
+  static constexpr std::size_t MAX_SIZE = 24;
+  static constexpr std::size_t ALIGNMENT = 8;
 
   using ptr_t = typename std::unique_ptr<
       detail::function_storage<ResultType, ArgumentTypes...>>;
