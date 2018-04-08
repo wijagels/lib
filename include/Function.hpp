@@ -20,6 +20,7 @@ struct function_storage {
   function_storage &operator=(const function_storage &) = default;
   function_storage &operator=(function_storage &&) noexcept = default;
 
+  virtual std::shared_ptr<function_storage> clone() = 0;
   virtual ResultType invoke(ArgumentTypes &&... args) = 0;
 };
 
@@ -27,7 +28,11 @@ template <typename FunctionType, typename ResultType, typename... ArgumentTypes>
 struct function_storage_impl : function_storage<ResultType, ArgumentTypes...> {
   function_storage_impl(FunctionType fn) : m_fn{fn} {}
 
-  ResultType invoke(ArgumentTypes &&... args) {
+  std::shared_ptr<function_storage<ResultType, ArgumentTypes...>> clone()
+      override {
+    return std::make_shared<function_storage_impl>(m_fn);
+  }
+  ResultType invoke(ArgumentTypes &&... args) override {
     return m_fn(std::forward<ArgumentTypes>(args)...);
   }
 
@@ -53,6 +58,17 @@ class Function<ResultType(ArgumentTypes...)> {
     m_storage = std::make_shared<detail::function_storage_impl<
         FunctionType, ResultType, ArgumentTypes...>>(std::move(f));
   }
+
+  Function(const Function &other) {
+    if (bool{other}) m_storage = other.m_storage->clone();
+  }
+  Function(Function &&) noexcept = default;
+
+  Function &operator=(const Function &other) {
+    if (this != &other && bool{other}) m_storage = other.m_storage->clone();
+    return *this;
+  }
+  Function &operator=(Function &&) noexcept = default;
 
   ResultType operator()(ArgumentTypes &&... args) {
     if (!bool{*this}) throw BadFunctionCall{"No function stored"};
