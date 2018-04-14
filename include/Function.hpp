@@ -28,7 +28,8 @@ struct function_storage {
 };
 
 template <typename FunctionType, typename ResultType, typename... ArgumentTypes>
-struct function_storage_impl : function_storage<ResultType, ArgumentTypes...> {
+struct function_storage_impl final
+    : function_storage<ResultType, ArgumentTypes...> {
   function_storage_impl(FunctionType fn) : m_fn{fn} {}
 
   std::unique_ptr<function_storage<ResultType, ArgumentTypes...>> clone()
@@ -81,21 +82,16 @@ class Function<ResultType(ArgumentTypes...)> {
             typename = std::enable_if_t<std::is_invocable_r_v<
                 ResultType, FunctionType, ArgumentTypes...>>>
   Function(FunctionType f) {
-    if constexpr (sizeof(detail::function_storage_impl<FunctionType, ResultType,
-                                                       ArgumentTypes...>) <=
-                      MAX_SIZE &&
-                  alignof(
-                      detail::function_storage_impl<FunctionType, ResultType,
-                                                    ArgumentTypes...>) <=
-                      ALIGNMENT) {
+    using fn_storage_t = detail::function_storage_impl<FunctionType, ResultType,
+                                                       ArgumentTypes...>;
+    if constexpr (sizeof(fn_storage_t) <= MAX_SIZE &&
+                  alignof(fn_storage_t) <= ALIGNMENT) {
       m_storage.template emplace<inline_storage>();
       auto *ptr = std::get_if<inline_storage>(&m_storage);
-      new (ptr) detail::function_storage_impl<FunctionType, ResultType,
-                                              ArgumentTypes...>{std::move(f)};
+      new (ptr) fn_storage_t{std::move(f)};
     } else {
       m_storage.template emplace<ptr_t>(
-          std::make_unique<detail::function_storage_impl<
-              FunctionType, ResultType, ArgumentTypes...>>(std::move(f)));
+          std::make_unique<fn_storage_t>(std::move(f)));
     }
   }
 
