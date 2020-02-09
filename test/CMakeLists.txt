@@ -13,20 +13,3 @@ register_test(skiplist_test skiplist_test.cpp)
 register_test(map_test map_test.cpp)
 register_test(vector_test vector_test.cpp)
 register_test(algorithm_test algorithm_test.cpp)
-
-if(NOT CLANG_TIDY_EXE)
-  message(STATUS "clang-tidy not found.")
-else()
-  message(STATUS "clang-tidy found: ${CLANG_TIDY_EXE}")
-  set_target_properties(
-      map_test
-      list_test
-      decorator_test
-      skiplist_test
-      point_test
-      vector_test
-      algorithm_test
-    PROPERTIES
-    CXX_CLANG_TIDY "${CLANG_TIDY_EXE}"
-  )
-endif()
