@@ -26,7 +26,3 @@ jobs:
     - name: Test
       run: |
         "${GITHUB_WORKSPACE}/bin/bazel" test -- //test:all -//test:algorithm
-
-    - name: Build
-      run: |
-        "${GITHUB_WORKSPACE}/bin/bazel" build //...
