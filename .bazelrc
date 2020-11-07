@@ -1,0 +1,11 @@
+build --copt -fdiagnostics-color=always
+build --action_env BAZEL_CXXOPTS=-std=c++17
+build --host_action_env BAZEL_CXXOPTS=-std=c++17
+
+build:asan --strip=never
+build:asan --copt -fsanitize=address
+build:asan --copt -DADDRESS_SANITIZER
+build:asan --copt -O0
+build:asan --copt -g
+build:asan --copt -fno-omit-frame-pointer
+build:asan --linkopt -fsanitize=address

@@ -195,8 +195,8 @@ TEST(vector_test, insert_test) {  // NOLINT
 }
 
 TEST(vector_test, assign_test) {  // NOLINT
-  auto result = vector<std::string>{{"a", "b"}};
-  auto v = vector<std::string>{{"foo", "trash", "garbage"}};
+  auto result = vector<std::string>{"a", "b"};
+  auto v = vector<std::string>{"foo", "trash", "garbage"};
   v.assign(std::begin(result), std::end(result));
   EXPECT_EQ(v, result);
 }

@@ -4,14 +4,13 @@
 #include <cassert>
 #include <climits>
 #include <cmath>
-#include <cstring>
 #include <initializer_list>
 #include <iterator>
 #include <memory>
 #include <stdexcept>
 
 namespace wijagels {
-static const std::size_t g_growth_factor = 2;
+static constexpr std::size_t g_growth_factor = 2;
 template <class T, class Allocator = std::allocator<T>>
 class vector {
  public:
@@ -297,7 +296,7 @@ class vector {
     pointer new_buf = alloc_traits::allocate(d_allocator, new_capacity);
     if (d_buffer_p) {
       if constexpr (std::is_trivially_copyable_v<value_type>) {
-        std::memcpy(new_buf, d_buffer_p, size() * sizeof(value_type));
+        std::uninitialized_copy(d_buffer_p, d_buffer_p + size(), new_buf);
       } else {
         for (size_type i = 0; i < size(); ++i) {
           alloc_traits::construct(d_allocator, &new_buf[i],
@@ -509,7 +508,7 @@ class vector {
   void assign(InputIterator first, InputIterator last) {
     clear();
     for (; first != last; ++first) {
-      push_back(*first);
+      emplace_back(std::forward<decltype(*first)>(*first));
     }
   }
 
@@ -649,7 +648,7 @@ class vector {
     if (size() >= capacity()) {
       grow_();
     }
-    alloc_traits::construct(d_allocator, &d_buffer_p[size()],
+    alloc_traits::construct(d_allocator, &d_buffer_p[d_size],
                             std::forward<Args>(args)...);
     ++d_size;
     return back();
@@ -667,8 +666,7 @@ class vector {
     if (size() >= capacity()) {
       grow_();
     }
-    alloc_traits::construct(d_allocator, &d_buffer_p[d_size],
-                            std::move_if_noexcept(x));
+    alloc_traits::construct(d_allocator, &d_buffer_p[d_size], std::move(x));
     ++d_size;
   }
 

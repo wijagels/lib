@@ -38,3 +38,7 @@ release/
 
 # YCM config
 .ycm_extra_conf.py
+
+# bazel
+bazel-*
+external
