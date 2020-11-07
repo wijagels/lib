@@ -19,6 +19,10 @@ cc_test(
     deps = [
         "//:allocator",
         "//:list",
+        "@boost//:assert",
+        "@boost//:pool",
+        "@boost//:throw_exception",
+        "@boost//:type_traits",
         "@com_google_googletest//:gtest_main",
     ],
 )
