@@ -80,11 +80,11 @@ class map {
     node_type &operator=(node_type &&) = default;
 
     key_type &key() const {
-      return container_type::node_type::d_node_p->d_data->first;
+      return container_type::node_type::d_node_p->d_data.first;
     }
 
     mapped_type &mapped() const {
-      return container_type::node_type::d_node_p->d_data->second;
+      return container_type::node_type::d_node_p->d_data.second;
     }
   };
 
@@ -157,7 +157,8 @@ class map {
   }
 
   map &operator=(map &&other) noexcept(
-      std::is_nothrow_move_assignable_v<container_type> && std::is_nothrow_move_assignable_v<Compare>) {
+      std::is_nothrow_move_assignable_v<container_type>
+          &&std::is_nothrow_move_assignable_v<Compare>) {
     d_val_comp = std::move(other.d_val_comp);
     d_comp = std::move(other.d_comp);
     d_container = std::move(other.d_container);
@@ -300,17 +301,17 @@ class map {
   }
 
   template <class... Args>
-  std::pair<iterator, bool> emplace(Args &&... args) {
+  std::pair<iterator, bool> emplace(Args &&...args) {
     return d_container.emplace(std::forward<Args>(args)...);
   }
 
   template <class... Args>
-  iterator emplace_hint(const_iterator hint, Args &&... args) {
+  iterator emplace_hint(const_iterator hint, Args &&...args) {
     return d_container.emplace_hint(hint, std::forward<Args>(args)...);
   }
 
   template <class... Args>
-  std::pair<iterator, bool> try_emplace(const key_type &k, Args &&... args) {
+  std::pair<iterator, bool> try_emplace(const key_type &k, Args &&...args) {
     auto it = d_container.find(k);
     if (it != d_container.end()) return {it, false};
     // TODO: optimize finding the spot to put the new element
@@ -319,7 +320,7 @@ class map {
   }
 
   template <class... Args>
-  std::pair<iterator, bool> try_emplace(key_type &&k, Args &&... args) {
+  std::pair<iterator, bool> try_emplace(key_type &&k, Args &&...args) {
     auto it = d_container.find(k);
     if (it != d_container.end()) return {it, false};
     // TODO: optimize finding the spot to put the new element
@@ -329,8 +330,7 @@ class map {
   }
 
   template <class... Args>
-  iterator try_emplace(const_iterator hint, const key_type &k,
-                       Args &&... args) {
+  iterator try_emplace(const_iterator hint, const key_type &k, Args &&...args) {
     auto it = d_container.find(k);
     if (it != d_container.end()) return it;
     // TODO: optimize finding the spot to put the new element
@@ -340,7 +340,7 @@ class map {
   }
 
   template <class... Args>
-  iterator try_emplace(const_iterator hint, key_type &&k, Args &&... args) {
+  iterator try_emplace(const_iterator hint, key_type &&k, Args &&...args) {
     auto it = d_container.find(k);
     if (it != d_container.end()) return it;
     // TODO: optimize finding the spot to put the new element

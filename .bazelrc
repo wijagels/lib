@@ -1,6 +1,6 @@
+build --incompatible_strict_action_env
 build --copt -fdiagnostics-color=always
-build --action_env BAZEL_CXXOPTS=-std=c++17
-build --host_action_env BAZEL_CXXOPTS=-std=c++17
+build --repo_env BAZEL_CXXOPTS=-std=c++17
 
 build:asan --strip=never
 build:asan --copt -fsanitize=address
